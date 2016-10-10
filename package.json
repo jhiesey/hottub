@@ -10,7 +10,6 @@
   "license": "MIT",
   "dependencies": {
     "async": "^2.0.1",
-    "rpi-gpio": "^0.7.0",
     "serialport": "^4.0.3"
   }
 }
