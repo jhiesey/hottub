@@ -31,9 +31,10 @@ function setupPins(cb) {
 		PIN_ACID_PUMP
 	].map(function (pin) {
 		return function (cb) {
+			var pindir = '/sys/class/gpio/gpio' + pin
 			async.series([
 				function (cb) {
-					fs.access('/sys/class/gpio/gpio' + pin, function (err) {
+					fs.access(pindir, function (err) {
 						if (err)
 							fs.writeFile('/sys/class/gpio/export', pin.toString(), cb)
 						else
@@ -41,16 +42,15 @@ function setupPins(cb) {
 					})
 				},
 				function (cb) {
-					fs.writeFile('/sys/class/gpio/gpio' + pin + '/direction', 'out', cb)
+					fs.writeFile(pindir + '/direction', 'out', cb)
 				},
 				function (cb) {
-					fs.writeFile('/sys/class/gpio/gpio' + pin + '/edge', 'none', cb)
+					fs.writeFile(pindir + '/edge', 'none', cb)
 				},
 				function (cb) {
-					fs.writeFile('/sys/class/gpio/gpio' + pin + '/value', '0', cb)
+					fs.writeFile(pindir + '/value', '0', cb)
 				}
 			], cb)
-			//gpio.setup(pin, gpio.DIR_OUT, gpio.EDGE_NONE, cb)
 		}
 	}), cb)
 }
