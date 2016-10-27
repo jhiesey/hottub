@@ -1,26 +1,26 @@
-var PIN_MUX_X = 18
-var PIN_MUX_Y = 23
+const PIN_MUX_X = 18
+const PIN_MUX_Y = 23
 
 // x=0, y=0: temp
 // x=0, y=1: pH
 // x=1, y=0: orp
 
-var SENSORS = {
+const SENSORS = {
 	TEMP: {x:0,y:0},
 	PH: {x:0,y:1},
 	ORP: {x:1,y:0}
 }
 
-var PIN_CIRCULATION_PUMP = 24
-var PIN_CHLORINE_PUMP = 25
-var PIN_ACID_PUMP = 8
+const PIN_CIRCULATION_PUMP = 24
+const PIN_CHLORINE_PUMP = 25
+const PIN_ACID_PUMP = 8
 
-var fs = require('fs')
-var async = require('async')
-var SerialPort = require('serialport')
+const fs = require('fs')
+const async = require('async')
+const SerialPort = require('serialport')
 
-var RESPONSE_TIMEOUT = 1000 // ms
-var READING_TIMEOUT = 2000 // ms
+const RESPONSE_TIMEOUT = 1000 // ms
+const READING_TIMEOUT = 2000 // ms
 
 function setupPins(cb) {
 	async.parallel([
@@ -55,7 +55,7 @@ function setupPins(cb) {
 	}), cb)
 }
 
-var uart = new SerialPort('/dev/ttyAMA0', {
+const uart = new SerialPort('/dev/ttyAMA0', {
 	baudRate: 9600,
 	parser: SerialPort.parsers.readline('\r')
 })
@@ -198,75 +198,79 @@ uart.on('open', function () {
 	})
 })
 
-var Sensors = function () {
-	var self = this
+const EventEmitter = require('events')
 
-	self.temp = null
-	self.ph = null
-	self.orp = null
-	self._ready = false
-	self._run = false
-	self._running = false
-}
-Sensors.prototype.enable(on) {
-	var self = this
-
-	self._run = !!on
-	self._loop()
-}
-Sensors.prototype._loop(err) {
-	var self = this
-
-	if (err) {
-		self.emit('error', err)
+class Sensors extends EventEmitter {
+	constructor () {
+		self.temp = null
+		self.ph = null
+		self.orp = null
+		self.enable = false
+		self._ready = false
+		self._running = false
 	}
-	if (!self._run || self._running || !self._ready)
-		return
 
-	self._running = true
-	var temp
-	var ph
-	async.series([
-		function (cb) {
-			readTemperature(function (err, temp) {
-				if (err)
-					return cb(err)
-				self.temp = temp
-				console.log('TEMP:', temp)
-				cb()
-			})
-		},
-		function (cb) {
-			readPH(self.temp, function (err, ph) {
-				if (err)
-					return cb(err)
-				self.ph = ph
-				console.log('PH:', ph)
-				cb()
-			})
-		},
-		function (cb) {
-			readORP(function (err, orp) {
-				if (err)
-					return cb(err)
-				self.orp = orp
-				console.log('ORP:', orp)
+	enable(on) {
+		var self = this
 
-				if (self._run) {
-					self.emit('reading', {
-						temp: self.temp,
-						ph: self.ph,
-						orp: self.orp
-					})
-				}
+		self.enable = !!on
+		self._loop()
+	}
 
-				cb()
-			})
+	_loop(err) {
+		var self = this
+
+		if (err) {
+			self.emit('error', err)
 		}
-	], function (err) {
-		loopRunning = false
-		loop(err)
-	})
+		if (!self.enable || self._running || !self._ready)
+			return
+
+		self._running = true
+		var temp
+		var ph
+		async.series([
+			function (cb) {
+				readTemperature(function (err, temp) {
+					if (err)
+						return cb(err)
+					self.temp = temp
+					console.log('TEMP:', temp)
+					cb()
+				})
+			},
+			function (cb) {
+				readPH(self.temp, function (err, ph) {
+					if (err)
+						return cb(err)
+					self.ph = ph
+					console.log('PH:', ph)
+					cb()
+				})
+			},
+			function (cb) {
+				readORP(function (err, orp) {
+					if (err)
+						return cb(err)
+					self.orp = orp
+					console.log('ORP:', orp)
+
+					if (self.enable) {
+						self.emit('reading', {
+							temp: self.temp,
+							ph: self.ph,
+							orp: self.orp
+						})
+					}
+
+					cb()
+				})
+			}
+		], function (err) {
+			loopRunning = false
+			loop(err)
+		})
+	}
 }
 
 module.exports = new Sensors()
