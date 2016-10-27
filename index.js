@@ -188,26 +188,59 @@ function readORP(cb) {
 }
 
 uart.on('open', function () {
-	setupPins(loop)
+	setupPins(function (err) {
+		if (err) {
+			self.emit('error', err)
+		}
+
+		module.exports._ready = true
+		module.exports._loop();
+	})
 })
 
-var storedTemp
-function loop(err) {
-	if (err) return
+var Sensors = function () {
+	var self = this
+
+	self.temp = null
+	self.ph = null
+	self.orp = null
+	self._ready = false
+	self._run = false
+	self._running = false
+}
+Sensors.prototype.enable(on) {
+	var self = this
+
+	self._run = !!on
+	self._loop()
+}
+Sensors.prototype._loop(err) {
+	var self = this
+
+	if (err) {
+		self.emit('error', err)
+	}
+	if (!self._run || self._running || !self._ready)
+		return
+
+	self._running = true
+	var temp
+	var ph
 	async.series([
 		function (cb) {
 			readTemperature(function (err, temp) {
 				if (err)
 					return cb(err)
-				storedTemp = temp
+				self.temp = temp
 				console.log('TEMP:', temp)
 				cb()
 			})
 		},
 		function (cb) {
-			readPH(storedTemp, function (err, ph) {
+			readPH(self.temp, function (err, ph) {
 				if (err)
 					return cb(err)
+				self.ph = ph
 				console.log('PH:', ph)
 				cb()
 			})
@@ -216,9 +249,24 @@ function loop(err) {
 			readORP(function (err, orp) {
 				if (err)
 					return cb(err)
+				self.orp = orp
 				console.log('ORP:', orp)
+
+				if (self._run) {
+					self.emit('reading', {
+						temp: self.temp,
+						ph: self.ph,
+						orp: self.orp
+					})
+				}
+
 				cb()
 			})
 		}
-	], loop)
+	], function (err) {
+		loopRunning = false
+		loop(err)
+	})
 }
+
+module.exports = new Sensors()
