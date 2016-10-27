@@ -235,7 +235,6 @@ class Sensors extends EventEmitter {
 					if (err)
 						return cb(err)
 					self.temp = temp
-					console.log('TEMP:', temp)
 					cb()
 				})
 			},
@@ -244,7 +243,6 @@ class Sensors extends EventEmitter {
 					if (err)
 						return cb(err)
 					self.ph = ph
-					console.log('PH:', ph)
 					cb()
 				})
 			},
@@ -253,8 +251,6 @@ class Sensors extends EventEmitter {
 					if (err)
 						return cb(err)
 					self.orp = orp
-					console.log('ORP:', orp)
-
 					if (self.enable) {
 						self.emit('reading', {
 							temp: self.temp,
