@@ -202,10 +202,13 @@ const EventEmitter = require('events')
 
 class Sensors extends EventEmitter {
 	constructor () {
+		super()
+		var self = this
+
 		self.temp = null
 		self.ph = null
 		self.orp = null
-		self.enable = false
+		self.enabled = false
 		self._ready = false
 		self._running = false
 	}
@@ -213,7 +216,7 @@ class Sensors extends EventEmitter {
 	enable(on) {
 		var self = this
 
-		self.enable = !!on
+		self.enabled = !!on
 		self._loop()
 	}
 
@@ -223,7 +226,7 @@ class Sensors extends EventEmitter {
 		if (err) {
 			self.emit('error', err)
 		}
-		if (!self.enable || self._running || !self._ready)
+		if (!self.enabled || self._running || !self._ready)
 			return
 
 		self._running = true
@@ -251,7 +254,7 @@ class Sensors extends EventEmitter {
 					if (err)
 						return cb(err)
 					self.orp = orp
-					if (self.enable) {
+					if (self.enabled) {
 						self.emit('reading', {
 							temp: self.temp,
 							ph: self.ph,
@@ -263,8 +266,8 @@ class Sensors extends EventEmitter {
 				})
 			}
 		], function (err) {
-			loopRunning = false
-			loop(err)
+			self._running = false
+			self._loop(err)
 		})
 	}
 }
