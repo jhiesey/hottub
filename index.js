@@ -2,7 +2,7 @@ const Sensors = require('./sensors')
 const Pins = require('./pins')
 const fs = require('fs')
 
-const sensors = Sensors()
+const sensors = new Sensors()
 sensors.enable(true)
 sensors.on('reading', function (reading) {
 	console.log('TEMP:', reading.temp)
@@ -20,13 +20,18 @@ const PIN_CIRCULATION_PUMP = 24
 const PIN_CHLORINE_PUMP = 25
 const PIN_ACID_PUMP = 8
 
-const pumpPins = {
-	PIN_CIRCULATION_PUMP: { in: false },
-	PIN_CHLORINE_PUMP: { in: false },
-	PIN_ACID_PUMP: { in: false }
-}
+var pumpPins = {}
+pumpPins[PIN_CIRCULATION_PUMP] = { in: false }
+pumpPins[PIN_CHLORINE_PUMP] = { in: false }
+pumpPins[PIN_ACID_PUMP] = { in: false }
 
-var pumps = Pins(pumpPins)
+var pumps = new Pins(pumpPins, function (err) {
+	if (err) return console.error(err)
+	pumps.set(PIN_CIRCULATION_PUMP, true, function (err) {
+		if(err)
+			console.error('failed to start pump:', err)
+	})
+})
 
 
 

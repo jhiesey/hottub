@@ -43,7 +43,7 @@ Pins.prototype.set = function (pin, value, cb) {
 
 	if (!self._pins[pin] || self._pins[pin].in) {
 		process.nextTick(function () {
-			cb(new Error('pin not configured'))
+			cb(new Error('pin not configured: ' + pin))
 		})
 		return
 	}

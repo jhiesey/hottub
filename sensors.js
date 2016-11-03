@@ -31,10 +31,10 @@ class Sensors extends EventEmitter {
 		self.enabled = false
 		self._ready = false
 		self._running = false
-		self._pins = Pins({
-			PIN_MUX_X: { in: false },
-			PIN_MUX_Y: { in: false }
-		})
+		var pinNums = {}
+		pinNums[PIN_MUX_X] = { in: false }
+		pinNums[PIN_MUX_Y] = { in: false }
+		self._pins = new Pins(pinNums)
 
 		self._uart = new SerialPort('/dev/ttyAMA0', {
 			baudRate: 9600,
@@ -86,7 +86,7 @@ class Sensors extends EventEmitter {
 		var ph
 		async.series([
 			function (cb) {
-				readTemperature(function (err, temp) {
+				self._readTemperature(function (err, temp) {
 					if (err)
 						return cb(err)
 					self.temp = temp
@@ -94,7 +94,7 @@ class Sensors extends EventEmitter {
 				})
 			},
 			function (cb) {
-				readPH(self.temp, function (err, ph) {
+				self._readPH(self.temp, function (err, ph) {
 					if (err)
 						return cb(err)
 					self.ph = ph
@@ -102,7 +102,7 @@ class Sensors extends EventEmitter {
 				})
 			},
 			function (cb) {
-				readORP(function (err, orp) {
+				self._readORP(function (err, orp) {
 					if (err)
 						return cb(err)
 					self.orp = orp
@@ -154,7 +154,7 @@ class Sensors extends EventEmitter {
 
 		async.parallel([
 			function (cb) {
-				self._pins.set(PIN_MUX_X, SENSORS[sensor].x, cb),
+				self._pins.set(PIN_MUX_X, SENSORS[sensor].x, cb)
 			},
 			function (cb) {
 				self._pins.set(PIN_MUX_Y, SENSORS[sensor].y, cb)
@@ -169,7 +169,7 @@ class Sensors extends EventEmitter {
 		async.series([
 			function (cb) {
 				if (sensor)
-					selectSensor(sensor, cb)
+					self._selectSensor(sensor, cb)
 				else
 					cb()
 			},
@@ -215,7 +215,7 @@ class Sensors extends EventEmitter {
 
 		async.series([
 			function (cb) {
-				selectSensor('PH', cb)
+				self._selectSensor('PH', cb)
 			},
 			self._clearBuffer.bind(self),
 			function (cb) {
@@ -230,7 +230,7 @@ class Sensors extends EventEmitter {
 					cb()
 				})
 			}, function (cb) {
-				readSensor(null, cb)
+				self._readSensor(null, cb)
 			}
 		], function (err, data) {
 			if (err)
