@@ -1,5 +1,6 @@
 const PIN_MUX_X = 18
 const PIN_MUX_Y = 23
+const PIN_FLOW = 0 // TODO: fix this
 
 // x=0, y=0: temp
 // x=0, y=1: pH
@@ -28,12 +29,20 @@ class Sensors extends EventEmitter {
 		self.temp = null
 		self.ph = null
 		self.orp = null
+		self.flow = null
 		self.enabled = false
 		self._ready = false
 		self._running = false
 		var pinNums = {}
 		pinNums[PIN_MUX_X] = { in: false }
 		pinNums[PIN_MUX_Y] = { in: false }
+		pinNums[PIN_FLOW] = {
+			in: true,
+			change: function () {
+				self.flowCounter++
+			},
+			edge: 'rising'
+		}
 		self._pins = new Pins(pinNums)
 
 		self._uart = new SerialPort('/dev/ttyAMA0', {
@@ -82,6 +91,8 @@ class Sensors extends EventEmitter {
 			return
 
 		self._running = true
+		self._flowCounter = 0
+		var flowStart = Date.now()
 		var temp
 		var ph
 		async.series([
@@ -106,11 +117,14 @@ class Sensors extends EventEmitter {
 					if (err)
 						return cb(err)
 					self.orp = orp
+					var flowEnd = Date.now()
+					self.flow = 1000 * self._flowCounter / (flowEnd - flowStart)
 					if (self.enabled) {
 						self.emit('reading', {
 							temp: self.temp,
 							ph: self.ph,
-							orp: self.orp
+							orp: self.orp,
+							flow: self.flow
 						})
 					}
 

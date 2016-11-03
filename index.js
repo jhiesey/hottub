@@ -33,6 +33,26 @@ var pumps = new Pins(pumpPins, function (err) {
 	})
 })
 
+// pump design:
+// * turn on pump
+// * once flow reaches setpoint, run timer
+// * once timer reaches limit, good to go
+
+
+
+// so we have:
+// startReadings(time)
+// injectChemical(time)
+
+/*
+web endpoints:
+	* home page
+	* inject chemical (post)
+	* enable readings (post) // sets timer
+	* get reading history // takes time
+	* get new reading // sets timer and blocks until new reading
+
+*/
 
 
 // const SENSOR_DELAY = 60 // seconds

@@ -1,22 +1,28 @@
 const async = require('async')
 const fs = require('fs')
+const SocketWatcher = require('socketwatcher').SocketWatcher
 
 const Pins = module.exports = function (pinNumbers, ready) {
 	var self = this
-	self._pins = pinNumbers
+	self._pins = {}
 
 	ready = ready || function () {}
 
-	async.parallel(Object.keys(pinNumbers).map(function (pin) {
-		const config = pinNumbers[pin]
+	async.parallel(Object.keys(pinNumbers).map(function (pinNum) {
+		const config = pinNumbers[pinNum]
 		const dirIn = !!config.in
+		const edge = config.edge || 'none'
+		const edgeCb = config.change
+		var pin = self._pins[pinNum] = {
+			in: dirIn
+		}
 		return function (cb) {
-			var pindir = '/sys/class/gpio/gpio' + pin
+			var pindir = '/sys/class/gpio/gpio' + pinNum
 			async.series([
 				function (cb) {
 					fs.access(pindir, function (err) {
 						if (err)
-							fs.writeFile('/sys/class/gpio/export', pin.toString(), cb)
+							fs.writeFile('/sys/class/gpio/export', pinNum.toString(), cb)
 						else
 							cb()
 					})
@@ -25,7 +31,22 @@ const Pins = module.exports = function (pinNumbers, ready) {
 					fs.writeFile(pindir + '/direction', dirIn ? 'in' : 'out', cb)
 				},
 				function (cb) {
-					fs.writeFile(pindir + '/edge', 'none', cb)
+					fs.writeFile(pindir + '/edge', edge, cb)
+				},
+				function (cb) {
+					if (edge !== 'none') {
+						fs.open(pindir + '/value', 0, 'r+', function (err, fd) {
+							if (err) return cb(err)
+							pin.fd = fd
+							pin.watcher = new SocketWatcher()
+							pin.watcher.callback = edgeCb
+							pin.watcher.set(fd, true, false)
+							pin.watcher.start()
+							cb()
+						})
+					} else {
+						cb()
+					}
 				},
 				function (cb) {
 					if (!dirIn)

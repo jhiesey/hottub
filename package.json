@@ -11,5 +11,8 @@
   "dependencies": {
     "async": "^2.0.1",
     "serialport": "^4.0.3"
+  },
+  "devDependencies": {
+    "socketwatcher": "^0.3.0"
   }
 }
