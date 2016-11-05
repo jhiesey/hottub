@@ -19,11 +19,16 @@ sensors.on('reading', function (reading) {
 const PIN_CIRCULATION_PUMP = 24
 const PIN_CHLORINE_PUMP = 25
 const PIN_ACID_PUMP = 8
+const PIN_BASE_PUMP = 7
+
+const PIN_FAILSAFE_IN = 11
+const PIN_FLOW_IN = 9
 
 var pumpPins = {}
 pumpPins[PIN_CIRCULATION_PUMP] = { in: false }
 pumpPins[PIN_CHLORINE_PUMP] = { in: false }
 pumpPins[PIN_ACID_PUMP] = { in: false }
+pumpPins[PIN_BASE_PUMP] = { in: false }
 
 var pumps = new Pins(pumpPins, function (err) {
 	if (err) return console.error(err)
