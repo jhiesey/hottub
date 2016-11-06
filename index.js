@@ -1,3 +1,9 @@
+const http = require('http')
+const pug = require('pug')
+const express = require('express')
+const path = require('path')
+const bodyParser = require('body-parser')
+
 const Sensors = require('./sensors')
 const Pins = require('./pins')
 const fs = require('fs')
@@ -37,6 +43,100 @@ var pumps = new Pins(pumpPins, function (err) {
 			console.error('failed to start pump:', err)
 	})
 })
+
+var app = express()
+var httpServer = http.createServer(app)
+app.set('views', path.join(__dirname, 'views'))
+app.set('view engine', 'pug')
+app.set('x-powered-by', false)
+app.engine('pug', pug.renderFile)
+
+app.use(express.static(path.join(__dirname, 'static')))
+app.use(bodyParser.urlencoded({extended: true}))
+
+// returns once reading done
+app.get('/reading', function (req, res, next) {
+	// returns all readings since START parameter.
+	// if there are some, returns immediately.
+	// otherwise, blocks (long polling).
+})
+
+app.post('/runpump', function (req, res, next) {
+	const pump = req.param('pump')
+	const duration = parseFloat(req.param('duration'))
+	if (duration === 0 || duration > 30) {
+		next(new Error('invalid pump duration'))
+		return
+	}
+
+	const pumpPin
+	switch (pump) {
+		case 'chlorine':
+			pumpPin = PIN_CHLORINE_PUMP
+			break
+		case 'acid':
+			pumpPin = PIN_ACID_PUMP
+			break
+		case 'base':
+			pumpPin = PIN_BASE_PUMP
+			break
+		default:
+			next(new Error('invalid pump specified'))
+			return
+	}
+	pumps.set(pumpPin, true, function (err) {
+		if (err)
+			console.error('failed to start pump:', err)
+	})
+	setTimeout(function () {
+		pumps.set(pumpPin, false, function (err) {
+			if (err)
+				console.error('failed to stop pump:', err)
+		})
+	}, runtime * 1000)
+})
+
+app.get('*', function (req, res) {
+  res.status(404).render('error', {
+    title: '404 Page Not Found - hottub.local',
+    message: '404 Not Found'
+  })
+})
+
+// error handling middleware
+app.use(function (err, req, res, next) {
+  error(err)
+  res.status(500).render('error', {
+    title: '500 Server Error - hottub.local',
+    message: err.message || err
+  })
+})
+
+httpServer.listen(80)
+
+// pump design:
+// * turn on pump
+// * once flow reaches setpoint, run timer
+// * once timer reaches limit, good to go
+
+
+
+// so we have:
+// startReadings(time)
+// injectChemical(time)
+
+/*
+web endpoints:
+	* home page
+	* inject chemical (post)
+	* enable readings (post) // sets timer
+	* get reading history // takes time
+	* get new reading // sets timer and blocks until new reading
+*/
+
+
+
+
 
 
 
