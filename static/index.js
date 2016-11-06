@@ -9,9 +9,9 @@ function load() {
 		if (xhr.readyState === XMLHttpRequest.DONE) {
 			if (xhr.status === 200) {
 				var body = JSON.parse(xhr.response)
-				tempReading.text = body.temp
-				orpReading.text = body.orp
-				phReading.text = body.ph
+				tempReading.innerHTML = body.temp
+				orpReading.innerHTML = body.orp
+				phReading.innerHTML = body.ph
 			}
 		}
 	}

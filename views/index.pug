@@ -3,17 +3,17 @@ extends layout
 block body
   main
     h1 Current status:
-    p(class='reading')
-      | Temp:
-      span(id='temp-reading')
+    p
+      | Temp:&nbsp;
+      span(id='temp-reading' class='reading')
         | ?
-    p(class='reading')
-      | ORP:
-      span(id='orp-reading')
+    p
+      | ORP:&nbsp;
+      span(id='orp-reading' class='reading')
         | ?
-    p(class='reading')
-      | pH:
-      span(id='ph-reading')
+    p
+      | pH:&nbsp;
+      span(id='ph-reading' class='reading')
         | ?
 
   form(action='runpump' method='post')
