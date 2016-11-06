@@ -10,12 +10,10 @@ const fs = require('fs')
 
 const sensors = new Sensors()
 sensors.enable(true)
-var lastReading = null
 sensors.on('reading', function (reading) {
 	console.log('TEMP:', reading.temp)
 	console.log('PH:', reading.ph)
 	console.log('ORP:', reading.orp)
-	lastReading = reading
 
 	var line = [new Date().toLocaleString(), reading.temp, reading.ph, reading.orp].join(',') + '\n'
 	fs.appendFile('log.csv', line, function (err) {
@@ -63,13 +61,11 @@ app.get('/', function (req, res, next) {
 
 // returns once reading done
 app.get('/reading', function (req, res, next) {
-	// THIS IS CURRENTLY NOT CORRECT!
-	// returns all readings since START parameter.
-	// if there are some, returns immediately.
-	// otherwise, blocks (long polling).
-
-	res.setHeader('Content-Type', 'application/json')
-	res.send(JSON.stringify(lastReading))
+	// blocks until the next reading
+	sensors.once('reading', function (reading) {
+		res.setHeader('Content-Type', 'application/json')
+		res.send(JSON.stringify(reading))
+	})
 })
 
 app.post('/runpump', function (req, res, next) {
