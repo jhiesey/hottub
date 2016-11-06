@@ -2,7 +2,19 @@ extends layout
 
 block body
   main
-    h1 Current water level:
+    h1 Current status:
+    p(class='reading')
+      | Temp:
+      span(id='temp-reading')
+        | ?
+    p(class='reading')
+      | ORP:
+      span(id='orp-reading')
+        | ?
+    p(class='reading')
+      | pH:
+      span(id='ph-reading')
+        | ?
 
   form(action='runpump' method='post')
     div
@@ -18,3 +30,5 @@ block body
       input(type='number' name='duration' id='duration')
     div
       input(type='submit')
+
+  script(src='index.js')
