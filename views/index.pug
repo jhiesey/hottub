@@ -5,13 +5,16 @@ block body
     h1 Current water level:
 
   form(action='runpump' method='post')
-  	div
-  		label(for='pump') Pump:
-  		input(type='radio' name='pump' id='pump' value='chlorine' checked) Chlorine
-  		input(type='radio' name='pump' id='pump' value='acid') Acid
-  		input(type='radio' name='pump' id='pump' value='base') Base
-  	div
-  		label(for='duration') Duration:
-  		input(type='number' id='duration') seconds
-  	div
-  		input(type='submit')
+    div
+      label(for='pump') Pump:
+      input(type='radio' name='pump' id='pump' value='chlorine' checked)
+      | Chlorine
+      input(type='radio' name='pump' id='pump' value='acid')
+      | Acid
+      input(type='radio' name='pump' id='pump' value='base')
+      | Base
+    div
+      label(for='duration') Duration (seconds):
+      input(type='number' name='duration' id='duration')
+    div
+      input(type='submit')

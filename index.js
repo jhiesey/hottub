@@ -54,6 +54,10 @@ app.engine('pug', pug.renderFile)
 app.use(express.static(path.join(__dirname, 'static')))
 app.use(bodyParser.urlencoded({extended: true}))
 
+app.get('/', function (req, res, next) {
+	res.render('index')
+})
+
 // returns once reading done
 app.get('/reading', function (req, res, next) {
 	// returns all readings since START parameter.
@@ -62,14 +66,14 @@ app.get('/reading', function (req, res, next) {
 })
 
 app.post('/runpump', function (req, res, next) {
-	const pump = req.param('pump')
-	const duration = parseFloat(req.param('duration'))
+	const pump = req.body.pump
+	const duration = parseFloat(req.body.duration)
 	if (duration === 0 || duration > 30) {
 		next(new Error('invalid pump duration'))
 		return
 	}
 
-	const pumpPin
+	var pumpPin
 	switch (pump) {
 		case 'chlorine':
 			pumpPin = PIN_CHLORINE_PUMP
@@ -84,6 +88,7 @@ app.post('/runpump', function (req, res, next) {
 			next(new Error('invalid pump specified'))
 			return
 	}
+
 	pumps.set(pumpPin, true, function (err) {
 		if (err)
 			console.error('failed to start pump:', err)
@@ -93,7 +98,8 @@ app.post('/runpump', function (req, res, next) {
 			if (err)
 				console.error('failed to stop pump:', err)
 		})
-	}, runtime * 1000)
+	}, duration * 1000)
+	res.render('index')
 })
 
 app.get('*', function (req, res) {
@@ -113,6 +119,10 @@ app.use(function (err, req, res, next) {
 })
 
 httpServer.listen(80)
+
+function error (err) {
+  console.error(err.stack || err.message || err)
+}
 
 // pump design:
 // * turn on pump
