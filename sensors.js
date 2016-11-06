@@ -20,6 +20,8 @@ const Pins = require('./pins')
 const RESPONSE_TIMEOUT = 1000 // ms
 const READING_TIMEOUT = 2000 // ms
 
+const RETRIES = 2
+
 class Sensors extends EventEmitter {
 	constructor () {
 		super()
@@ -31,6 +33,7 @@ class Sensors extends EventEmitter {
 		self.enabled = false
 		self._ready = false
 		self._running = false
+		self._errorCount = 0
 		var pinNums = {}
 		pinNums[PIN_MUX_X] = { in: false }
 		pinNums[PIN_MUX_Y] = { in: false }
@@ -80,7 +83,9 @@ class Sensors extends EventEmitter {
 		var self = this
 
 		if (err) {
-			self.emit('error', err)
+			if (self._errorCount > RETRIES) {
+				return self.emit('error', err)
+			}
 		}
 		if (!self.enabled || self._running || !self._ready)
 			return
@@ -123,6 +128,11 @@ class Sensors extends EventEmitter {
 			}
 		], function (err) {
 			self._running = false
+			if (err) {
+				self._errorCount++
+			} else {
+				self._errorCount = 0
+			}
 			self._loop(err)
 		})
 	}
