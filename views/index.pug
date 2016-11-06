@@ -16,19 +16,18 @@ block body
       span(id='ph-reading' class='reading')
         | ?
 
-  form(action='runpump' method='post')
     div
       label(for='pump') Pump:
-      input(type='radio' name='pump' id='pump' value='chlorine' checked)
+      input(type='radio' name='pump' value='chlorine' checked)
       | Chlorine
-      input(type='radio' name='pump' id='pump' value='acid')
+      input(type='radio' name='pump' value='acid')
       | Acid
-      input(type='radio' name='pump' id='pump' value='base')
+      input(type='radio' name='pump' value='base')
       | Base
     div
       label(for='duration') Duration (seconds):
       input(type='number' name='duration' id='duration' value='10')
     div
-      input(type='submit' value='Run')
+      button(id='run-button') Run
 
   script(src='index.js')

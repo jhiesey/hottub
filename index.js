@@ -53,7 +53,7 @@ app.set('x-powered-by', false)
 app.engine('pug', pug.renderFile)
 
 app.use(express.static(path.join(__dirname, 'static')))
-app.use(bodyParser.urlencoded({extended: true}))
+app.use(bodyParser.json())
 
 app.get('/', function (req, res, next) {
 	res.render('index')
@@ -102,7 +102,8 @@ app.post('/runpump', function (req, res, next) {
 				console.error('failed to stop pump:', err)
 		})
 	}, duration * 1000)
-	res.render('index')
+	res.setHeader('Content-Type', 'application/json')
+	res.send(JSON.stringify({ success: true }))
 })
 
 app.get('*', function (req, res) {
