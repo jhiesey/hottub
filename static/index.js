@@ -13,10 +13,10 @@ function load() {
 				orpReading.innerHTML = body.orp
 				phReading.innerHTML = body.ph
 			}
+			setTimeout(load, 1000)
 		}
 	}
 	xhr.send()
-	setTimeout(load, 1000)
 }
 
 load()
