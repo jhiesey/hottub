@@ -4,6 +4,7 @@ const EventEmitter = require('events')
 
 class Pins extends EventEmitter {
 	constructor (pinNumbers) {
+		super()
 		var self = this
 		self._pins = pinNumbers
 		self.ready = false
@@ -90,3 +91,6 @@ class Pins extends EventEmitter {
 		})
 	}
 }
+
+module.exports = Pins
+
