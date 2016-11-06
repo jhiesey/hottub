@@ -35,6 +35,13 @@ class Sensors extends EventEmitter {
 		pinNums[PIN_MUX_X] = { in: false }
 		pinNums[PIN_MUX_Y] = { in: false }
 		self._pins = new Pins(pinNums)
+		function ready () {
+			if (self._uart.isOpen() && self._pins.ready) {
+				self._ready = true
+				self._loop()
+			}
+		}
+		self._pins.on('ready', ready)
 
 		self._uart = new SerialPort('/dev/ttyAMA0', {
 			baudRate: 9600,
@@ -43,10 +50,7 @@ class Sensors extends EventEmitter {
 		self._lines = []
 		self._lineCbs = []
 
-		self._uart.on('open', function () {
-			self._ready = true
-			self._loop();
-		})
+		self._uart.on('open', ready)
 
 		self._uart.on('data', function (data) {
 			if (self._lineCbs.length) {

@@ -36,7 +36,8 @@ pumpPins[PIN_CHLORINE_PUMP] = { in: false }
 pumpPins[PIN_ACID_PUMP] = { in: false }
 pumpPins[PIN_BASE_PUMP] = { in: false }
 
-var pumps = new Pins(pumpPins, function (err) {
+var pumps = new Pins(pumpPins)
+pumps.on('ready', function (err) {
 	if (err) return console.error(err)
 	pumps.set(PIN_CIRCULATION_PUMP, true, function (err) {
 		if(err)
