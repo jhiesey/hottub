@@ -24,11 +24,11 @@ sensors.on('reading', function (reading) {
 
 const PIN_CIRCULATION_PUMP = 24
 const PIN_CHLORINE_PUMP = 25
-const PIN_ACID_PUMP = 8
-const PIN_BASE_PUMP = 7
+const PIN_ACID_PUMP = 11
+const PIN_BASE_PUMP = 9
 
-const PIN_FAILSAFE_IN = 11
-const PIN_FLOW_IN = 9
+const PIN_FAILSAFE_IN = 8
+const PIN_FLOW_IN = 7
 
 var pumpPins = {}
 pumpPins[PIN_CIRCULATION_PUMP] = { in: false }
