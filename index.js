@@ -20,7 +20,7 @@ const CHECK_INTERVAL = 15 * 60 // seconds
 
 // SANITY PARAMETERS
 const PH_HARD_MIN = 5.8
-const PH_HARD_MAX = 8.5
+const PH_HARD_MAX = 9.0
 const ORP_HARD_MIN = 100
 const ORP_HARD_MAX = 900
 
@@ -43,6 +43,8 @@ const CHLORINE_MIN_SECONDS = 5
 const CHLORINE_MAX_SECONDS = 30
 const CHLORINE_DELAY = 3600
 
+var status = null
+
 const sensors = new Sensors()
 var lastReading = null
 sensors.on('reading', function (reading) {
@@ -53,7 +55,7 @@ sensors.on('reading', function (reading) {
 	var line = [new Date().toLocaleString(), reading.temp, reading.ph, reading.orp].join(',') + '\n'
 	fs.appendFile('readings.csv', line, function (err) {
 		if (err)
-			console.error('failed to log!')
+			setError('failed log reading: ' + err)
 	})
 })
 
@@ -68,6 +70,11 @@ pumps.on('ready', function () {
 	checkAndAdjust()
 	startServer()
 })
+
+function setError (message) {
+	console.error(message)
+	status = status || message
+}
 
 function between (value, min, max) {
 	return Math.min(Math.max(value, min), max)
@@ -84,9 +91,9 @@ function checkAndAdjust () {
 		var pump
 		var delay = CHECK_INTERVAL
 		if (err) {
-			console.error('failed to take reading:', err)
+			setError('failed to read: ' + err)
 		} else if (reading.ph < PH_HARD_MIN || reading.ph > PH_HARD_MAX || reading.orp < ORP_HARD_MIN || reading.orp > ORP_HARD_MAX) {
-			console.error('WEIRD READING! NOT ADJUSTING!')
+			setError('reading out of range!')
 		} else if (reading.ph > PH_MAX) {
 			pump = 'acid'
 			duration = between((reading.ph - PH_MAX) * ACID_SECONDS_PER_UNIT, ACID_MIN_SECONDS, ACID_MAX_SECONDS)
@@ -133,16 +140,27 @@ function circulate (duration) {
 	if (circulationEnd === 0) {
 		pumps.set(PIN_CIRCULATION_PUMP, true, function (err) {
 			if (err)
-				console.error('failed to start pump:', err)
+				setError('failed to start pump: ' + err)
 		})
 		sensors.enable(true)
 		// set accurate flag after delay
-		setTimeout(function () {
-			if (circulationEnd !== 0) {
-				sensorsAccurate = true
-			}
-
-		}, SENSOR_READING_DELAY * 1000)
+		function checkAccurate () {
+			inputs.get(PIN_FLOW_IN, function (err, value) {
+				if (err) {
+					setError('failed to verify flow')
+					return
+				}
+				if (value) {
+					if (circulationEnd !== 0) {
+						sensorsAccurate = true
+					}
+				} else {
+					console.error('no flow! retrying after delay...')
+					setTimeout(checkAccurate, SENSOR_READING_DELAY * 1000)
+				}
+			})
+		}
+		setTimeout(checkAccurate, SENSOR_READING_DELAY * 1000)
 	}
 
 	const end = Date.now() + duration * 1000
@@ -153,7 +171,7 @@ function circulate (duration) {
 			circulationEnd = 0
 			pumps.set(PIN_CIRCULATION_PUMP, false, function (err) {
 				if (err)
-					console.error('failed to stop pump:', err)
+					setError('failed to stop pump: ' + err)
 			})
 			sensors.enable(false)
 			sensorsAccurate = false
@@ -180,19 +198,19 @@ function runPump (pump, duration) {
 	var line = [new Date().toLocaleString(), pump, duration].join(',') + '\n'
 	fs.appendFile('adjustments.csv', line, function (err) {
 		if (err)
-			console.error('failed to log!')
+			setError('failed to log adjustment: ' + err)
 	})
 
 	circulate(duration + CIRCULATION_TIME)
 
 	pumps.set(pumpPin, true, function (err) {
 		if (err)
-			console.error('failed to start pump:', err)
+			setError('failed to start pump: ' + err)
 
 		setTimeout(function () {
 			pumps.set(pumpPin, false, function (err) {
 				if (err)
-					console.error('failed to stop pump:', err)
+					setError('failed to stop pump: ' + err)
 			})
 		}, duration * 1000)
 	})
@@ -234,7 +252,8 @@ app.get('/reading', function (req, res, next) {
 			temp: reading.temp,
 			ph: reading.ph,
 			orp: reading.orp,
-			accurate: sensorsAccurate
+			accurate: sensorsAccurate,
+			status: status || 'ok'
 		}
 		res.send(JSON.stringify(fullReading))
 	})
