@@ -6,7 +6,7 @@ var statusField = document.getElementById('status-field')
 
 function load() {
 	var xhr = new XMLHttpRequest()
-	xhr.open('GET', '/reading')
+	xhr.open('GET', '/reading?t=' + Date.now())
 	xhr.onreadystatechange = function () {
 		if (xhr.readyState === XMLHttpRequest.DONE) {
 			if (xhr.status === 200) {
