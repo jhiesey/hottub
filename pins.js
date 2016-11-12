@@ -37,7 +37,7 @@ class Pins extends EventEmitter {
 					},
 					function (cb) {
 						if (edge !== 'none') {
-							fs.open(pindir + '/value', 0, 'r+', function (err, fd) {
+							fs.open(pindir + '/value', 'r', 0, function (err, fd) {
 								if (err) return cb(err)
 								pin.fd = fd
 								pin.watcher = new SocketWatcher()
@@ -102,9 +102,9 @@ class Pins extends EventEmitter {
 		}
 
 		fs.readFile('/sys/class/gpio/gpio' + pin + '/value', 'utf8', function (err, data) {
-			if (!err && data === '1') {
+			if (!err && data === '1\n') {
 				cb(null, true)
-			} else if (!err && data === '0') {
+			} else if (!err && data === '0\n') {
 				cb(null, false)
 			} else {
 				cb(err || new Error('unknown value'))

@@ -82,7 +82,7 @@ inputPins[PIN_ERROR_IN] = {
 }
 var inputs = new Pins(inputPins)
 inputs.on('ready', function () {
-	inputPins.get(PIN_ERROR_IN, function (err, value) {
+	inputs.get(PIN_ERROR_IN, function (err, value) {
 		if (err) {
 			setError('failed to check for error: ' + err)
 			return
