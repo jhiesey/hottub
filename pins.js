@@ -45,7 +45,7 @@ class Pins extends EventEmitter {
 							if (edge) {
 								self._createPoller()
 								// prevent initial interrupt
-								self.get(pinNum, function (err) {
+								self._dummyRead(fd, function (err) {
 									if (err) return (cb(err))
 									self._poller.add(fd, Epoll.EPOLLPRI)
 								})
@@ -82,7 +82,7 @@ class Pins extends EventEmitter {
 			if (pinNum === undefined) return self.emit('error', new Error('unexpected pin interrupt'))
 			self.emit('edge', pinNum)
 			// clear interrupt
-			self.get(pinNum, function (err) {
+			self._dummyRead(fd, function (err) {
 				if (err) return self.emit('error', err)
 			})
 		})
@@ -99,7 +99,7 @@ class Pins extends EventEmitter {
 		}
 
 		if (!self.ready) {
-			self.once('ready', self.set(pin, value, cb))
+			self.once('ready', self.set.bind(self, pin, value, cb))
 			return
 		}
 
@@ -123,7 +123,7 @@ class Pins extends EventEmitter {
 		}
 
 		if (!self.ready) {
-			self.once('ready', self.get(pin, cb))
+			self.once('ready', self.get.bind(self, pin, cb))
 			return
 		}
 
@@ -138,6 +138,14 @@ class Pins extends EventEmitter {
 			} else {
 				cb(new Error('unknown value'))
 			}
+		})
+	}
+
+	_dummyRead (fd, cb) {
+		var buf = Buffer.alloc(1)
+		fs.read(fd, buf, 0, 1, 0, function (err, bytesRead) {
+			if (err) return cb(err)
+			if (bytesRead !== 1) return cb(new Error('failed to read'))
 		})
 	}
 }
