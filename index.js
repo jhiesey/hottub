@@ -237,7 +237,7 @@ app.get('/reading', function (req, res, next) {
 app.post('/runpump', function (req, res, next) {
 	const pump = req.body.pump
 	const duration = parseFloat(req.body.duration)
-	if (duration === 0 || duration > 30) {
+	if (duration <= 0 || duration > 60) {
 		next(new Error('invalid pump duration'))
 		return
 	}
