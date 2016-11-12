@@ -103,12 +103,13 @@ class Pins extends EventEmitter {
 			return
 		}
 
-		var buf = Buffer.alloc(1)
+		var buf
 		if (value) {
-			buf[0] = '1'
+			buf = Buffer.from('1')
 		} else {
-			buf[0] = '0'
+			buf = Buffer.from('0')
 		}
+		cb = cb || function () {}
 		fs.write(self._pins[pin].fd, buf, 0, 1, 0, cb)
 	}
 
@@ -131,9 +132,9 @@ class Pins extends EventEmitter {
 		fs.read(self._pins[pin].fd, buf, 0, 1, 0, function (err, bytesRead) {
 			if (err) return cb(err)
 
-			if (bytesRead === 1 && buf[0] === '0') {
+			if (bytesRead === 1 && buf[0].toString() === '0') {
 				cb(null, false)
-			} else if (bytesRead === 1 && buf[0] === '1') {
+			} else if (bytesRead === 1 && buf[0].toString() === '1') {
 				cb(null, true)
 			} else {
 				cb(new Error('unknown value'))
