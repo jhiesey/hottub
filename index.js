@@ -49,7 +49,7 @@ sensors.on('reading', function (reading) {
 		return
 
 	var line = [new Date().toLocaleString(), reading.temp, reading.ph, reading.orp].join(',') + '\n'
-	fs.appendFile('log.csv', line, function (err) {
+	fs.appendFile('readings.csv', line, function (err) {
 		if (err)
 			console.error('failed to log!')
 	})
@@ -174,6 +174,12 @@ function runPump (pump, duration) {
 		default:
 			throw new Error('invalid pump specified')
 	}
+
+	var line = [new Date().toLocaleString(), pump, duration].join(',') + '\n'
+	fs.appendFile('adjustments.csv', line, function (err) {
+		if (err)
+			console.error('failed to log!')
+	})
 
 	circulate(duration + CIRCULATION_TIME)
 
