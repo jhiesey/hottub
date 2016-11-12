@@ -45,8 +45,8 @@ class Pins extends EventEmitter {
 							if (edge !== 'none') {
 								self._createPoller()
 								// prevent initial interrupt
-								self.get(pinNum, function (err) {
-									if (err) return (cb(err))
+								self._read(fd, function (err) {
+									if (err) return cb(err)
 									self._poller.add(fd, Epoll.EPOLLPRI)
 									cb()
 								})
@@ -130,13 +130,13 @@ class Pins extends EventEmitter {
 			return
 		}
 
-		var buf = Buffer.alloc(1)
-		fs.read(self._pins[pin].fd, buf, 0, 1, 0, function (err, bytesRead) {
+		self._read(self._pins[pin].fd, function (err, buf) {
 			if (err) return cb(err)
 
-			if (bytesRead === 1 && buf.toString() === '0') {
+			const str = buf.toString()
+			if (str === '0') {
 				cb(null, false)
-			} else if (bytesRead === 1 && buf.toString() === '1') {
+			} else if (str === '1') {
 				cb(null, true)
 			} else {
 				cb(new Error('unknown value'))
@@ -144,12 +144,12 @@ class Pins extends EventEmitter {
 		})
 	}
 
-	_dummyRead (fd, cb) {
+	_read (fd, cb) {
 		var buf = Buffer.alloc(1)
 		fs.read(fd, buf, 0, 1, 0, function (err, bytesRead) {
 			if (err) return cb(err)
 			if (bytesRead !== 1) return cb(new Error('failed to read'))
-			cb(null)
+			cb(null, buf)
 		})
 	}
 }
