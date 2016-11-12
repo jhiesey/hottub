@@ -1,6 +1,6 @@
 const async = require('async')
 const fs = require('fs')
-const SocketWatcher = require('socketwatcher').SocketWatcher
+const Epoll = require('epoll').Epoll
 const EventEmitter = require('events')
 
 class Pins extends EventEmitter {
@@ -8,6 +8,8 @@ class Pins extends EventEmitter {
 		super()
 		var self = this
 		self._pins = {}
+		self._fds = {}
+		self._poller = null
 		self.ready = false
 
 		async.parallel(Object.keys(pinNumbers).map(function (pinNum) {
@@ -36,19 +38,20 @@ class Pins extends EventEmitter {
 						fs.writeFile(pindir + '/edge', edge, cb)
 					},
 					function (cb) {
-						if (edge !== 'none') {
-							fs.open(pindir + '/value', 'r', 0, function (err, fd) {
-								if (err) return cb(err)
-								pin.fd = fd
-								pin.watcher = new SocketWatcher()
-								pin.watcher.callback = edgeCb
-								pin.watcher.set(fd, true, false)
-								pin.watcher.start()
-								cb()
-							})
-						} else {
+						fs.open(pindir + '/value', 'r+', function (err, fd) {
+							if (err) return cb(err)
+							pin.fd = fd
+							self._fds[fd] = pinNum
+							if (edge) {
+								self._createPoller()
+								// prevent initial interrupt
+								self.get(pinNum, function (err) {
+									if (err) return (cb(err))
+									self._poller.add(fd, Epoll.EPOLLPRI)
+								})
+							}
 							cb()
-						}
+						})
 					},
 					function (cb) {
 						if (!dirIn)
@@ -68,6 +71,23 @@ class Pins extends EventEmitter {
 		})
 	}
 
+	_createPoller () {
+		var self = this
+		if (self._poller)
+			return
+
+		self._poller = new Epoll(function (err, fd, events) {
+			if (err) return self.emit('error', err)
+			var pinNum = self._fds[fd]
+			if (pinNum === undefined) return self.emit('error', new Error('unexpected pin interrupt'))
+			self.emit('edge', pinNum)
+			// clear interrupt
+			self.get(pinNum, function (err) {
+				if (err) return self.emit('error', err)
+			})
+		})
+	}
+
 	set (pin, value, cb) {
 		var self = this
 
@@ -83,7 +103,13 @@ class Pins extends EventEmitter {
 			return
 		}
 
-		fs.writeFile('/sys/class/gpio/gpio' + pin + '/value', value ? '1' : '0', cb)
+		var buf = Buffer.alloc(1)
+		if (value) {
+			buf[0] = '1'
+		} else {
+			buf[0] = '0'
+		}
+		fs.write(self._pins[pin].fd, buf, 0, 1, 0, cb)
 	}
 
 	get (pin, cb) {
@@ -101,13 +127,16 @@ class Pins extends EventEmitter {
 			return
 		}
 
-		fs.readFile('/sys/class/gpio/gpio' + pin + '/value', 'utf8', function (err, data) {
-			if (!err && data === '1\n') {
-				cb(null, true)
-			} else if (!err && data === '0\n') {
+		var buf = Buffer.alloc(1)
+		fs.read(self._pins[pin].fd, buf, 0, 1, 0, function (err, bytesRead) {
+			if (err) return cb(err)
+
+			if (bytesRead === 1 && buf[0] === '0') {
 				cb(null, false)
+			} else if (bytesRead === 1 && buf[0] === '1') {
+				cb(null, true)
 			} else {
-				cb(err || new Error('unknown value'))
+				cb(new Error('unknown value'))
 			}
 		})
 	}
