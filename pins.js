@@ -118,7 +118,7 @@ class Pins extends EventEmitter {
 
 		if (!self._pins[pin]) {
 			process.nextTick(function () {
-				cb(new Error('pin not configured'))
+				cb(new Error('pin not configured: ' + pin))
 			})
 			return
 		}
