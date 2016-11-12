@@ -50,6 +50,8 @@ class Pins extends EventEmitter {
 									self._poller.add(fd, Epoll.EPOLLPRI)
 									cb()
 								})
+							} else {
+								cb()
 							}
 						})
 					},
