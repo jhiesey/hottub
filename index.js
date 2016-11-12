@@ -59,35 +59,57 @@ app.get('/', function (req, res, next) {
 	res.render('index')
 })
 
-const ADJUSTMENT_DELAY = 3600 // seconds
+const CHECK_INTERVAL = 1800 // seconds
+
+const PH_HARD_MIN = 5.8
+const PH_HARD_MAX = 8.5
+const ORP_HARD_MIN = 100
+const ORP_HARD_MAX = 900
 
 const PH_MAX = 7.7
-const ACID_SECONDS_PER_UNIT = 5
+const ACID_SECONDS_PER_UNIT = 50
+const ACID_MIN_SECONDS = 5
 const ACID_MAX_SECONDS = 20
+const ACID_DELAY = 1800
 
-const PH_MIN = 7.3
-const BASE_SECONDS_PER_UNIT = 0 // TODO: establish this
+const PH_MIN = 0 // 7.3
+const BASE_SECONDS_PER_UNIT = 50 // TODO: establish this
+const BASE_MIN_SECONDS = 0 // TODO: establish this
 const BASE_MAX_SECONDS = 0 // TODO: establish this
+
+const BASE_DELAY = 1800
 
 const ORP_MIN = 700
 const CHLORINE_SECONDS_PER_MV = 0.25
+const CHLORINE_MIN_SECONDS = 5
 const CHLORINE_MAX_SECONDS = 30
+const CHLORINE_DELAY = 3600
+
+function between (value, min, max) {
+	return Math.min(Math.max(value, min), max)
+}
 
 function checkAndAdjust () {
 	getAccurateReading(function (err, reading) {
 		var duration = 0
 		var pump
+		var delay = CHECK_INTERVAL
 		if (err) {
 			console.error('failed to take reading:', err)
+		} else if (reading.ph < PH_HARD_MIN || reading.ph > PH_HARD_MAX || reading.orp < ORP_HARD_MIN || reading.orp > ORP_HARD_MAX) {
+			console.error('WEIRD READING! NOT ADJUSTING!')
 		} else if (reading.ph > PH_MAX) {
 			pump = 'acid'
-			duration = Math.min((reading.ph - PH_MAX) * ACID_SECONDS_PER_UNIT, ACID_MAX_SECONDS)
+			duration = between((reading.ph - PH_MAX) * ACID_SECONDS_PER_UNIT, ACID_MIN_SECONDS, ACID_MAX_SECONDS)
+			delay = ACID_DELAY
 		} else if (reading.ph < PH_MIN) {
 			pump = 'base'
-			duration = Math.min((PH_MIN - reading.ph) * BASE_SECONDS_PER_UNIT, BASE_MAX_SECONDS)
+			duration = between((PH_MIN - reading.ph) * BASE_SECONDS_PER_UNIT, BASE_MIN_SECONDS, BASE_MAX_SECONDS)
+			delay = BASE_DELAY
 		} else if (reading.orp < ORP_MIN) {
 			pump = 'chlorine'
-			duration = Math.min((ORP_MIN - reading.orp) * CHLORINE_SECONDS_PER_MV, CHLORINE_MAX_SECONDS)
+			duration = between((ORP_MIN - reading.orp) * CHLORINE_SECONDS_PER_MV, CHLORINE_MIN_SECONDS, CHLORINE_MAX_SECONDS)
+			delay = CHLORINE_DELAY
 		}
 
 		if (duration > 0) {
@@ -95,7 +117,7 @@ function checkAndAdjust () {
 			runPump(pump, duration)
 		}
 
-		setTimeout(checkAndAdjust, ADJUSTMENT_DELAY * 1000)
+		setTimeout(checkAndAdjust, delay * 1000)
 	})
 }
 
@@ -106,7 +128,7 @@ function getAccurateReading(cb) {
 		if (!sensorsAccurate)
 			return
 
-		sensors.removeEventListener('reading', onReading)
+		sensors.removeListener('reading', onReading)
 		cb(null, reading)
 	}
 	sensors.on('reading', onReading)
