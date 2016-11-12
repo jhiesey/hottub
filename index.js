@@ -68,7 +68,7 @@ const ORP_HARD_MAX = 900
 
 const PH_MAX = 7.7
 const ACID_SECONDS_PER_UNIT = 50
-const ACID_MIN_SECONDS = 5
+const ACID_MIN_SECONDS = 3
 const ACID_MAX_SECONDS = 20
 const ACID_DELAY = 1800
 
@@ -89,7 +89,12 @@ function between (value, min, max) {
 	return Math.min(Math.max(value, min), max)
 }
 
+var adjusting = false
 function checkAndAdjust () {
+	if (adjusting)
+		return
+
+	adjusting = true
 	getAccurateReading(function (err, reading) {
 		var duration = 0
 		var pump
@@ -117,6 +122,7 @@ function checkAndAdjust () {
 			runPump(pump, duration)
 		}
 
+		adjusting = false
 		setTimeout(checkAndAdjust, delay * 1000)
 	})
 }
@@ -228,13 +234,19 @@ app.post('/runpump', function (req, res, next) {
 		return
 	}
 
-	try {
-		runPump(pump, duration)
-	} catch (e) {
-		next(e)
+	var success = true
+	if (adjusting) {
+		success = false
+	} else {
+		try {
+			runPump(pump, duration)
+		} catch (e) {
+			next(e)
+		}
 	}
+
 	res.setHeader('Content-Type', 'application/json')
-	res.send(JSON.stringify({ success: true }))
+	res.send(JSON.stringify({ success }))
 })
 
 app.get('*', function (req, res) {
