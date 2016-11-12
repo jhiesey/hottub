@@ -255,6 +255,7 @@ app.use(bodyParser.json())
 
 app.get('/', function (req, res, next) {
 	res.render('index', {
+		title: 'Hot Tub Status',
 		temp: lastReading ? lastReading.temp : '?',
 		ph: lastReading ? lastReading.ph : '?',
 		orp: lastReading ? lastReading.orp : '?',
