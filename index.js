@@ -20,7 +20,7 @@ const CHECK_INTERVAL = 15 * 60 // seconds
 
 // SANITY PARAMETERS
 const PH_HARD_MIN = 5.8
-const PH_HARD_MAX = 9.0
+const PH_HARD_MAX = 9.2
 const ORP_HARD_MIN = 100
 const ORP_HARD_MAX = 900
 

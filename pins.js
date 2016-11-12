@@ -48,9 +48,9 @@ class Pins extends EventEmitter {
 								self.get(pinNum, function (err) {
 									if (err) return (cb(err))
 									self._poller.add(fd, Epoll.EPOLLPRI)
+									cb()
 								})
 							}
-							cb()
 						})
 					},
 					function (cb) {
