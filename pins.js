@@ -81,7 +81,7 @@ class Pins extends EventEmitter {
 			var pinNum = self._fds[fd]
 			if (pinNum === undefined) return self.emit('error', new Error('unexpected pin interrupt'))
 			// clear interrupt
-			self.get(fd, function (err, val) {
+			self.get(pinNum, function (err, val) {
 				if (err) return self.emit('error', err)
 				self.emit('edge', pinNum, val)
 			})
