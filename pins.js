@@ -26,7 +26,7 @@ class Pins extends EventEmitter {
 					function (cb) {
 						fs.access(pindir, function (err) {
 							if (err)
-								fs.writeFile('/sys/class/gpio/export', pinNum.toString(), cb)
+								fs.writeFile('/sys/class/gpio/export', pinNum, cb)
 							else
 								cb()
 						})
@@ -41,8 +41,8 @@ class Pins extends EventEmitter {
 						fs.open(pindir + '/value', 'r+', function (err, fd) {
 							if (err) return cb(err)
 							pin.fd = fd
-							self._fds[fd] = pinNum
-							if (edge) {
+							self._fds[fd] = parseInt(pinNum)
+							if (edge !== 'none') {
 								self._createPoller()
 								// prevent initial interrupt
 								self._dummyRead(fd, function (err) {
@@ -147,6 +147,7 @@ class Pins extends EventEmitter {
 		fs.read(fd, buf, 0, 1, 0, function (err, bytesRead) {
 			if (err) return cb(err)
 			if (bytesRead !== 1) return cb(new Error('failed to read'))
+			cb(null)
 		})
 	}
 }
