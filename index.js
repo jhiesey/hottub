@@ -75,7 +75,7 @@ var inputPins = {}
 inputPins[PIN_FLOW_IN] = { in: true }
 inputPins[PIN_ERROR_IN] = { in: true, edge: 'rising' }
 var inputs = new Pins(inputPins)
-inputs.on('ready', function () {
+function checkErrorPin () {
 	inputs.get(PIN_ERROR_IN, function (err, value) {
 		if (err) {
 			setError('failed to check for error: ' + err)
@@ -85,10 +85,14 @@ inputs.on('ready', function () {
 			setError('failsafe error!')
 		}
 	})
+}
+
+inputs.on('ready', function () {
+	checkErrorPin()
 })
-inputs.on('edge', function (pin) {
-	if (pin === PIN_ERROR_IN) {
-		setError('failsafe error!')
+inputs.on('edge', function (pin, value) {
+	if (value && pin === PIN_ERROR_IN) {
+		checkErrorPin()
 	}
 })
 

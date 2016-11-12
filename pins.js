@@ -45,7 +45,7 @@ class Pins extends EventEmitter {
 							if (edge !== 'none') {
 								self._createPoller()
 								// prevent initial interrupt
-								self._dummyRead(fd, function (err) {
+								self.get(pinNum, function (err) {
 									if (err) return (cb(err))
 									self._poller.add(fd, Epoll.EPOLLPRI)
 								})
@@ -80,10 +80,10 @@ class Pins extends EventEmitter {
 			if (err) return self.emit('error', err)
 			var pinNum = self._fds[fd]
 			if (pinNum === undefined) return self.emit('error', new Error('unexpected pin interrupt'))
-			self.emit('edge', pinNum)
 			// clear interrupt
-			self._dummyRead(fd, function (err) {
+			self.get(fd, function (err, val) {
 				if (err) return self.emit('error', err)
+				self.emit('edge', pinNum, val)
 			})
 		})
 	}
