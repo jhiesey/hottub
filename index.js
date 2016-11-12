@@ -15,7 +15,7 @@ const PIN_FLOW_IN = 7
 const CIRCULATION_TIME = 3600 // seconds; 1 hour
 const READING_CIRCULATION_TIME = 30 // seconds
 const SENSOR_READING_DELAY = 60 // seconds
-const SENSOR_READING_TIME = 30 // seconds
+const SENSOR_READING_TIME = 60 // seconds
 const CHECK_INTERVAL = 15 * 60 // seconds
 
 // SANITY PARAMETERS
