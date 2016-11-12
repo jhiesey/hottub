@@ -2,12 +2,12 @@ body {
 	font-family: sans-serif;
 }
 
-.inaccurate-reading {
+.reading.inaccurate-reading {
 	color: lightgray;
 	font-size: 150%;
 }
 
-.accurate-reading {
+.reading.accurate-reading {
 	color: green;
 	font-size: 150%;
 }
