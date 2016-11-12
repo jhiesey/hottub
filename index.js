@@ -8,7 +8,7 @@ const PIN_CHLORINE_PUMP = 25
 const PIN_ACID_PUMP = 11
 const PIN_BASE_PUMP = 9
 
-const PIN_FAILSAFE_IN = 8
+const PIN_ERROR_IN = 8
 const PIN_FLOW_IN = 7
 
 // BASIC TIMING
@@ -71,6 +71,28 @@ pumps.on('ready', function () {
 	startServer()
 })
 
+var inputPins = {}
+inputPins[PIN_FLOW_IN] = { in: true }
+inputPins[PIN_ERROR_IN] = {
+	in: true,
+	edge: 'rising',
+	edgeCb: function () {
+		setError('failsafe error!')
+	}
+}
+var inputs = new Pins(inputPins)
+inputs.on('ready', function () {
+	inputPins.get(PIN_ERROR_IN, function (err, value) {
+		if (err) {
+			setError('failed to check for error: ' + err)
+			return
+		}
+		if (value) {
+			setError('failsafe error!')
+		}
+	})
+})
+
 function setError (message) {
 	console.error(message)
 	status = status || message
@@ -82,7 +104,7 @@ function between (value, min, max) {
 
 var adjusting = false
 function checkAndAdjust () {
-	if (adjusting)
+	if (adjusting || status)
 		return
 
 	adjusting = true

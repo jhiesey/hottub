@@ -13,6 +13,7 @@
     "body-parser": "^1.15.2",
     "express": "^4.14.0",
     "pug": "^2.0.0-beta6",
-    "serialport": "^4.0.3"
+    "serialport": "^4.0.3",
+    "socketwatcher": "^0.3.0"
   }
 }
