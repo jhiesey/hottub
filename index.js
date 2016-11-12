@@ -44,7 +44,9 @@ const CHLORINE_MAX_SECONDS = 30
 const CHLORINE_DELAY = 3600
 
 const sensors = new Sensors()
+var lastReading = null
 sensors.on('reading', function (reading) {
+	lastReading = reading
 	if (!sensorsAccurate)
 		return
 
@@ -213,7 +215,11 @@ app.use(express.static(path.join(__dirname, 'static')))
 app.use(bodyParser.json())
 
 app.get('/', function (req, res, next) {
-	res.render('index')
+	res.render('index', {
+		temp: lastReading ? lastReading.temp : '?',
+		ph: lastReading ? lastReading.ph : '?',
+		orp: lastReading ? lastReading.orp : '?'
+	})
 })
 
 // returns once reading done
