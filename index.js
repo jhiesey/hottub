@@ -1,12 +1,47 @@
-const http = require('http')
-const pug = require('pug')
-const express = require('express')
-const path = require('path')
-const bodyParser = require('body-parser')
-
 const Sensors = require('./sensors')
 const Pins = require('./pins')
 const fs = require('fs')
+
+// PINS
+const PIN_CIRCULATION_PUMP = 24
+const PIN_CHLORINE_PUMP = 25
+const PIN_ACID_PUMP = 11
+const PIN_BASE_PUMP = 9
+
+const PIN_FAILSAFE_IN = 8
+const PIN_FLOW_IN = 7
+
+// BASIC TIMING
+const CIRCULATION_TIME = 3600 // seconds; 1 hour
+const READING_CIRCULATION_TIME = 30 // seconds
+const SENSOR_READING_DELAY = 120 // seconds
+const SENSOR_READING_TIME = 30 // seconds
+const CHECK_INTERVAL = 1800 // seconds
+
+// SANITY PARAMETERS
+const PH_HARD_MIN = 5.8
+const PH_HARD_MAX = 8.5
+const ORP_HARD_MIN = 100
+const ORP_HARD_MAX = 900
+
+// ADJUSTMENT FACTORS
+const PH_MAX = 7.7
+const ACID_SECONDS_PER_UNIT = 50
+const ACID_MIN_SECONDS = 3
+const ACID_MAX_SECONDS = 20
+const ACID_DELAY = 1800
+
+const PH_MIN = 0 // 7.3
+const BASE_SECONDS_PER_UNIT = 50 // TODO: establish this
+const BASE_MIN_SECONDS = 0 // TODO: establish this
+const BASE_MAX_SECONDS = 0 // TODO: establish this
+const BASE_DELAY = 1800
+
+const ORP_MIN = 700
+const CHLORINE_SECONDS_PER_MV = 0.5
+const CHLORINE_MIN_SECONDS = 5
+const CHLORINE_MAX_SECONDS = 30
+const CHLORINE_DELAY = 3600
 
 const sensors = new Sensors()
 sensors.on('reading', function (reading) {
@@ -20,19 +55,6 @@ sensors.on('reading', function (reading) {
 	})
 })
 
-const PIN_CIRCULATION_PUMP = 24
-const PIN_CHLORINE_PUMP = 25
-const PIN_ACID_PUMP = 11
-const PIN_BASE_PUMP = 9
-
-const PIN_FAILSAFE_IN = 8
-const PIN_FLOW_IN = 7
-
-const CIRCULATION_TIME = 3600 // seconds; 1 hour
-const READING_CIRCULATION_TIME = 30 // seconds
-const SENSOR_READING_DELAY = 120 // seconds
-const SENSOR_READING_TIME = 30 // seconds
-
 var pumpPins = {}
 pumpPins[PIN_CIRCULATION_PUMP] = { in: false }
 pumpPins[PIN_CHLORINE_PUMP] = { in: false }
@@ -42,48 +64,8 @@ pumpPins[PIN_BASE_PUMP] = { in: false }
 var pumps = new Pins(pumpPins)
 pumps.on('ready', function () {
 	checkAndAdjust()
-	httpServer.listen(80)
+	startServer()
 })
-
-var app = express()
-var httpServer = http.createServer(app)
-app.set('views', path.join(__dirname, 'views'))
-app.set('view engine', 'pug')
-app.set('x-powered-by', false)
-app.engine('pug', pug.renderFile)
-
-app.use(express.static(path.join(__dirname, 'static')))
-app.use(bodyParser.json())
-
-app.get('/', function (req, res, next) {
-	res.render('index')
-})
-
-const CHECK_INTERVAL = 1800 // seconds
-
-const PH_HARD_MIN = 5.8
-const PH_HARD_MAX = 8.5
-const ORP_HARD_MIN = 100
-const ORP_HARD_MAX = 900
-
-const PH_MAX = 7.7
-const ACID_SECONDS_PER_UNIT = 50
-const ACID_MIN_SECONDS = 3
-const ACID_MAX_SECONDS = 20
-const ACID_DELAY = 1800
-
-const PH_MIN = 0 // 7.3
-const BASE_SECONDS_PER_UNIT = 50 // TODO: establish this
-const BASE_MIN_SECONDS = 0 // TODO: establish this
-const BASE_MAX_SECONDS = 0 // TODO: establish this
-
-const BASE_DELAY = 1800
-
-const ORP_MIN = 700
-const CHLORINE_SECONDS_PER_MV = 0.5
-const CHLORINE_MIN_SECONDS = 5
-const CHLORINE_MAX_SECONDS = 30
-const CHLORINE_DELAY = 3600
 
 function between (value, min, max) {
 	return Math.min(Math.max(value, min), max)
@@ -208,6 +190,26 @@ function runPump (pump, duration) {
 	})
 }
 
+const http = require('http')
+const pug = require('pug')
+const express = require('express')
+const path = require('path')
+const bodyParser = require('body-parser')
+
+var app = express()
+var httpServer = http.createServer(app)
+app.set('views', path.join(__dirname, 'views'))
+app.set('view engine', 'pug')
+app.set('x-powered-by', false)
+app.engine('pug', pug.renderFile)
+
+app.use(express.static(path.join(__dirname, 'static')))
+app.use(bodyParser.json())
+
+app.get('/', function (req, res, next) {
+	res.render('index')
+})
+
 // returns once reading done
 app.get('/reading', function (req, res, next) {
 	circulate(READING_CIRCULATION_TIME)
@@ -265,15 +267,10 @@ app.use(function (err, req, res, next) {
   })
 })
 
+function startServer() {
+	httpServer.listen(80)
+}
+
 function error (err) {
   console.error(err.stack || err.message || err)
 }
-
-/*
-every hour:
-	request readings
-	compute required chemicals
-	inject chlorine (if needed)
-	inject acid (if needed)
-	inject base (if needed)
-*/
