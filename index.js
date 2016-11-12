@@ -10,12 +10,6 @@ const fs = require('fs')
 
 const sensors = new Sensors()
 sensors.on('reading', function (reading) {
-	console.log('TEMP:', reading.temp)
-	console.log('PH:', reading.ph)
-	console.log('ORP:', reading.orp)
-
-	console.log('accurate?', sensorsAccurate ? 'yes' : 'no')
-
 	if (!sensorsAccurate)
 		return
 
@@ -47,7 +41,8 @@ pumpPins[PIN_BASE_PUMP] = { in: false }
 
 var pumps = new Pins(pumpPins)
 pumps.on('ready', function () {
-	// TODO: never run pumps before this!
+	checkAndAdjust()
+	httpServer.listen(80)
 })
 
 var app = express()
@@ -63,6 +58,46 @@ app.use(bodyParser.json())
 app.get('/', function (req, res, next) {
 	res.render('index')
 })
+
+const ADJUSTMENT_DELAY = 3600 // seconds
+
+const PH_MAX = 7.7
+const ACID_SECONDS_PER_UNIT = 5
+const ACID_MAX_SECONDS = 20
+
+const PH_MIN = 7.3
+const BASE_SECONDS_PER_UNIT = 0 // TODO: establish this
+const BASE_MAX_SECONDS = 0 // TODO: establish this
+
+const ORP_MIN = 700
+const CHLORINE_SECONDS_PER_MV = 0.25
+const CHLORINE_MAX_SECONDS = 30
+
+function checkAndAdjust () {
+	getAccurateReading(function (err, reading) {
+		var duration = 0
+		var pump
+		if (err) {
+			console.error('failed to take reading:', err)
+		} else if (reading.ph > PH_MAX) {
+			pump = 'acid'
+			duration = Math.min((reading.ph - PH_MAX) * ACID_SECONDS_PER_UNIT, ACID_MAX_SECONDS)
+		} else if (reading.ph < PH_MIN) {
+			pump = 'base'
+			duration = Math.min((PH_MIN - reading.ph) * BASE_SECONDS_PER_UNIT, BASE_MAX_SECONDS)
+		} else if (reading.orp < ORP_MIN) {
+			pump = 'chlorine'
+			duration = Math.min((ORP_MIN - reading.orp) * CHLORINE_SECONDS_PER_MV, CHLORINE_MAX_SECONDS)
+		}
+
+		if (duration > 0) {
+			console.log('RUNNING PUMP:', pump, 'FOR DURATION:', duration)
+			runPump(pump, duration)
+		}
+
+		setTimeout(checkAndAdjust, ADJUSTMENT_DELAY * 1000)
+	})
+}
 
 function getAccurateReading(cb) {
 	circulate(SENSOR_READING_DELAY + SENSOR_READING_TIME)
@@ -135,13 +170,14 @@ function runPump (pump, duration) {
 	pumps.set(pumpPin, true, function (err) {
 		if (err)
 			console.error('failed to start pump:', err)
+
+		setTimeout(function () {
+			pumps.set(pumpPin, false, function (err) {
+				if (err)
+					console.error('failed to stop pump:', err)
+			})
+		}, duration * 1000)
 	})
-	setTimeout(function () {
-		pumps.set(pumpPin, false, function (err) {
-			if (err)
-				console.error('failed to stop pump:', err)
-		})
-	}, duration * 1000)
 }
 
 // returns once reading done
@@ -194,8 +230,6 @@ app.use(function (err, req, res, next) {
     message: err.message || err
   })
 })
-
-httpServer.listen(80)
 
 function error (err) {
   console.error(err.stack || err.message || err)
