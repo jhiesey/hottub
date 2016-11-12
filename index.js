@@ -257,7 +257,8 @@ app.get('/', function (req, res, next) {
 	res.render('index', {
 		temp: lastReading ? lastReading.temp : '?',
 		ph: lastReading ? lastReading.ph : '?',
-		orp: lastReading ? lastReading.orp : '?'
+		orp: lastReading ? lastReading.orp : '?',
+		status: status || 'ok'
 	})
 })
 

@@ -2,6 +2,7 @@ var readings = document.getElementById('readings')
 var tempReading = document.getElementById('temp-reading')
 var orpReading = document.getElementById('orp-reading')
 var phReading = document.getElementById('ph-reading')
+var statusField = document.getElementById('status-field')
 
 function load() {
 	var xhr = new XMLHttpRequest()
@@ -14,6 +15,7 @@ function load() {
 				tempReading.innerHTML = body.temp
 				orpReading.innerHTML = body.orp
 				phReading.innerHTML = body.ph
+				statusField.innerHTML = body.status
 			}
 			setTimeout(load, 500)
 		}

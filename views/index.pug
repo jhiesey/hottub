@@ -16,6 +16,10 @@ block body
         | pH:&nbsp;
         span(id='ph-reading' class='reading')
           | #{ph}
+      p
+        | status:&nbsp;
+          span(id='status-field')
+            | #{status}
 
     div
       label(for='pump') Pump:
