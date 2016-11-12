@@ -249,7 +249,7 @@ app.post('/runpump', function (req, res, next) {
 		try {
 			runPump(pump, duration)
 		} catch (e) {
-			next(e)
+			success = false
 		}
 	}
 
