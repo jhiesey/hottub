@@ -9,11 +9,15 @@ const Pins = require('./pins')
 const fs = require('fs')
 
 const sensors = new Sensors()
-sensors.enable(true)
 sensors.on('reading', function (reading) {
 	console.log('TEMP:', reading.temp)
 	console.log('PH:', reading.ph)
 	console.log('ORP:', reading.orp)
+
+	console.log('accurate?', sensorsAccurate ? 'yes' : 'no')
+
+	if (!sensorsAccurate)
+		return
 
 	var line = [new Date().toLocaleString(), reading.temp, reading.ph, reading.orp].join(',') + '\n'
 	fs.appendFile('log.csv', line, function (err) {
@@ -32,6 +36,8 @@ const PIN_FLOW_IN = 7
 
 const CIRCULATION_TIME = 3600 // seconds; 1 hour
 const READING_CIRCULATION_TIME = 30 // seconds
+const SENSOR_READING_DELAY = 120 // seconds
+const SENSOR_READING_TIME = 30 // seconds
 
 var pumpPins = {}
 pumpPins[PIN_CIRCULATION_PUMP] = { in: false }
@@ -58,8 +64,22 @@ app.get('/', function (req, res, next) {
 	res.render('index')
 })
 
+function getAccurateReading(cb) {
+	circulate(SENSOR_READING_DELAY + SENSOR_READING_TIME)
+
+	function onReading (reading) {
+		if (!sensorsAccurate)
+			return
+
+		sensors.removeEventListener('reading', onReading)
+		cb(null, reading)
+	}
+	sensors.on('reading', onReading)
+}
+
 var circulationEnd = 0 // ms since epoch
 var circulationTimer = 0
+var sensorsAccurate = false
 // ensures the circulation pump will run for at least duration seconds
 function circulate (duration) {
 	// if not running
@@ -68,6 +88,14 @@ function circulate (duration) {
 			if (err)
 				console.error('failed to start pump:', err)
 		})
+		// enable readings after delay
+		sensors.enable(true)
+		setTimeout(function () {
+			if (circulationEnd !== 0) {
+				sensorsAccurate = true
+			}
+
+		}, SENSOR_READING_DELAY * 1000)
 	}
 
 	const end = Date.now() + duration * 1000
@@ -80,6 +108,8 @@ function circulate (duration) {
 				if (err)
 					console.error('failed to stop pump:', err)
 			})
+			sensors.enable(false)
+			sensorsAccurate = false
 		}, duration * 1000)
 	}
 }
