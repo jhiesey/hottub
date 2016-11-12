@@ -73,13 +73,7 @@ pumps.on('ready', function () {
 
 var inputPins = {}
 inputPins[PIN_FLOW_IN] = { in: true }
-inputPins[PIN_ERROR_IN] = {
-	in: true,
-	edge: 'rising',
-	edgeCb: function () {
-		setError('failsafe error!')
-	}
-}
+inputPins[PIN_ERROR_IN] = { in: true, edge: 'rising' }
 var inputs = new Pins(inputPins)
 inputs.on('ready', function () {
 	inputs.get(PIN_ERROR_IN, function (err, value) {
@@ -91,6 +85,11 @@ inputs.on('ready', function () {
 			setError('failsafe error!')
 		}
 	})
+})
+inputs.on('edge', function (pin) {
+	if (pin === PIN_ERROR_IN) {
+		setError('failsafe error!')
+	}
 })
 
 function setError (message) {
