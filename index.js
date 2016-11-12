@@ -30,6 +30,9 @@ const PIN_BASE_PUMP = 9
 const PIN_FAILSAFE_IN = 8
 const PIN_FLOW_IN = 7
 
+const CIRCULATION_TIME = 3600 // seconds; 1 hour
+const READING_CIRCULATION_TIME = 30 // seconds
+
 var pumpPins = {}
 pumpPins[PIN_CIRCULATION_PUMP] = { in: false }
 pumpPins[PIN_CHLORINE_PUMP] = { in: false }
@@ -37,12 +40,8 @@ pumpPins[PIN_ACID_PUMP] = { in: false }
 pumpPins[PIN_BASE_PUMP] = { in: false }
 
 var pumps = new Pins(pumpPins)
-pumps.on('ready', function (err) {
-	if (err) return console.error(err)
-	pumps.set(PIN_CIRCULATION_PUMP, true, function (err) {
-		if(err)
-			console.error('failed to start pump:', err)
-	})
+pumps.on('ready', function () {
+	// TODO: never run pumps before this!
 })
 
 var app = express()
@@ -59,8 +58,66 @@ app.get('/', function (req, res, next) {
 	res.render('index')
 })
 
+var circulationEnd = 0 // ms since epoch
+var circulationTimer = 0
+// ensures the circulation pump will run for at least duration seconds
+function circulate (duration) {
+	// if not running
+	if (circulationEnd === 0) {
+		pumps.set(PIN_CIRCULATION_PUMP, true, function (err) {
+			if (err)
+				console.error('failed to start pump:', err)
+		})
+	}
+
+	const end = Date.now() + duration * 1000
+	if (end > circulationEnd) {
+		clearTimeout(circulationTimer)
+		circulationEnd = end
+		circulationTimer = setTimeout(function () {
+			circulationEnd = 0
+			pumps.set(PIN_CIRCULATION_PUMP, false, function (err) {
+				if (err)
+					console.error('failed to stop pump:', err)
+			})
+		}, duration * 1000)
+	}
+}
+
+function runPump (pump, duration) {
+	var pumpPin
+	switch (pump) {
+		case 'chlorine':
+			pumpPin = PIN_CHLORINE_PUMP
+			break
+		case 'acid':
+			pumpPin = PIN_ACID_PUMP
+			break
+		case 'base':
+			pumpPin = PIN_BASE_PUMP
+			break
+		default:
+			throw new Error('invalid pump specified')
+	}
+
+	circulate(duration + CIRCULATION_TIME)
+
+	pumps.set(pumpPin, true, function (err) {
+		if (err)
+			console.error('failed to start pump:', err)
+	})
+	setTimeout(function () {
+		pumps.set(pumpPin, false, function (err) {
+			if (err)
+				console.error('failed to stop pump:', err)
+		})
+	}, duration * 1000)
+}
+
 // returns once reading done
 app.get('/reading', function (req, res, next) {
+	circulate(READING_CIRCULATION_TIME)
+
 	// blocks until the next reading
 	sensors.once('reading', function (reading) {
 		res.setHeader('Content-Type', 'application/json')
@@ -76,32 +133,11 @@ app.post('/runpump', function (req, res, next) {
 		return
 	}
 
-	var pumpPin
-	switch (pump) {
-		case 'chlorine':
-			pumpPin = PIN_CHLORINE_PUMP
-			break
-		case 'acid':
-			pumpPin = PIN_ACID_PUMP
-			break
-		case 'base':
-			pumpPin = PIN_BASE_PUMP
-			break
-		default:
-			next(new Error('invalid pump specified'))
-			return
+	try {
+		runPump(pump, duration)
+	} catch (e) {
+		next(e)
 	}
-
-	pumps.set(pumpPin, true, function (err) {
-		if (err)
-			console.error('failed to start pump:', err)
-	})
-	setTimeout(function () {
-		pumps.set(pumpPin, false, function (err) {
-			if (err)
-				console.error('failed to stop pump:', err)
-		})
-	}, duration * 1000)
 	res.setHeader('Content-Type', 'application/json')
 	res.send(JSON.stringify({ success: true }))
 })
