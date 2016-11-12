@@ -1,3 +1,4 @@
+var readings = document.getElementById('readings')
 var tempReading = document.getElementById('temp-reading')
 var orpReading = document.getElementById('orp-reading')
 var phReading = document.getElementById('ph-reading')
@@ -9,6 +10,7 @@ function load() {
 		if (xhr.readyState === XMLHttpRequest.DONE) {
 			if (xhr.status === 200) {
 				var body = JSON.parse(xhr.response)
+				readings.class = body.accurate ? 'accurate-reading' : 'inaccurate-reading'
 				tempReading.innerHTML = body.temp
 				orpReading.innerHTML = body.orp
 				phReading.innerHTML = body.ph

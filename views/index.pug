@@ -3,18 +3,19 @@ extends layout
 block body
   main
     h1 Current status:
-    p
-      | Temp:&nbsp;
-      span(id='temp-reading' class='reading')
-        | ?
-    p
-      | ORP:&nbsp;
-      span(id='orp-reading' class='reading')
-        | ?
-    p
-      | pH:&nbsp;
-      span(id='ph-reading' class='reading')
-        | ?
+    div(id='readings' class='inaccurate-reading')
+      p
+        | Temp:&nbsp;
+        span(id='temp-reading')
+          | ?
+      p
+        | ORP:&nbsp;
+        span(id='orp-reading')
+          | ?
+      p
+        | pH:&nbsp;
+        span(id='ph-reading')
+          | ?
 
     div
       label(for='pump') Pump:
