@@ -26,13 +26,13 @@ const ORP_HARD_MAX = 900
 
 // ADJUSTMENT FACTORS
 const PH_MAX = 7.7
-const ACID_SECONDS_PER_UNIT = 50
+const ACID_SECONDS_PER_UNIT = 25
 const ACID_MIN_SECONDS = 5
 const ACID_MAX_SECONDS = 30
 const ACID_DELAY = 1800
 
 const PH_MIN = 0 // 7.3
-const BASE_SECONDS_PER_UNIT = 50 // TODO: establish this
+const BASE_SECONDS_PER_UNIT = 0 // TODO: establish this
 const BASE_MIN_SECONDS = 0 // TODO: establish this
 const BASE_MAX_SECONDS = 0 // TODO: establish this
 const BASE_DELAY = 1800
