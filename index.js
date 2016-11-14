@@ -38,10 +38,10 @@ const BASE_MAX_SECONDS = 0 // TODO: establish this
 const BASE_DELAY = 1800
 
 const ORP_MIN = 700
-const CHLORINE_SECONDS_PER_MV = 0.3
+const CHLORINE_SECONDS_PER_MV = 0.2
 const CHLORINE_MIN_SECONDS = 3
-const CHLORINE_MAX_SECONDS = 20
-const CHLORINE_DELAY = 3600
+const CHLORINE_MAX_SECONDS = 30
+const CHLORINE_DELAY = 45 * 60
 
 var status = null
 
