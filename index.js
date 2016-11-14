@@ -52,7 +52,8 @@ sensors.on('reading', function (reading) {
 	if (!sensorsAccurate)
 		return
 
-	var line = [new Date().toLocaleString(), reading.temp, reading.ph, reading.orp].join(',') + '\n'
+	var now = new Date()
+	var line = [now.toLocaleDateString(), now.toLocaleTimeString(), reading.temp, reading.ph, reading.orp].join(',') + '\n'
 	fs.appendFile('readings.csv', line, function (err) {
 		if (err)
 			setError('failed log reading: ' + err)
@@ -213,8 +214,8 @@ function runPump (pump, duration) {
 		default:
 			throw new Error('invalid pump specified')
 	}
-
-	var line = [new Date().toLocaleString(), pump, duration].join(',') + '\n'
+	var now = new Date()
+	var line = [now.toLocaleDateString(), now.toLocaleTimeString(), pump, duration].join(',') + '\n'
 	fs.appendFile('adjustments.csv', line, function (err) {
 		if (err)
 			setError('failed to log adjustment: ' + err)
