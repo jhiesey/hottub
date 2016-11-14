@@ -59,24 +59,27 @@ sensors.on('reading', function (reading) {
 	})
 })
 
-var pumpPins = {}
-pumpPins[PIN_CIRCULATION_PUMP] = { in: false }
-pumpPins[PIN_CHLORINE_PUMP] = { in: false }
-pumpPins[PIN_ACID_PUMP] = { in: false }
-pumpPins[PIN_BASE_PUMP] = { in: false }
-
-var pumps = new Pins(pumpPins)
-pumps.on('ready', function () {
+var pinDefs = {}
+pinDefs[PIN_CIRCULATION_PUMP] = { in: false }
+pinDefs[PIN_CHLORINE_PUMP] = { in: false }
+pinDefs[PIN_ACID_PUMP] = { in: false }
+pinDefs[PIN_BASE_PUMP] = { in: false }
+pinDefs[PIN_FLOW_IN] = { in: true }
+pinDefs[PIN_ERROR_IN] = { in: true, edge: 'rising' }
+var pins = new Pins(pinDefs)
+pins.on('ready', function () {
+	checkErrorPin()
 	checkAndAdjust()
 	startServer()
 })
+pins.on('edge', function (pin, value) {
+	if (value && pin === PIN_ERROR_IN) {
+		checkErrorPin()
+	}
+})
 
-var inputPins = {}
-inputPins[PIN_FLOW_IN] = { in: true }
-inputPins[PIN_ERROR_IN] = { in: true, edge: 'rising' }
-var inputs = new Pins(inputPins)
 function checkErrorPin () {
-	inputs.get(PIN_ERROR_IN, function (err, value) {
+	pins.get(PIN_ERROR_IN, function (err, value) {
 		if (err) {
 			setError('failed to check for error: ' + err)
 			return
@@ -86,15 +89,6 @@ function checkErrorPin () {
 		}
 	})
 }
-
-inputs.on('ready', function () {
-	checkErrorPin()
-})
-inputs.on('edge', function (pin, value) {
-	if (value && pin === PIN_ERROR_IN) {
-		checkErrorPin()
-	}
-})
 
 function setError (message) {
 	console.error(message)
@@ -163,14 +157,14 @@ var sensorsAccurate = false
 function circulate (duration) {
 	// if not running
 	if (circulationEnd === 0) {
-		pumps.set(PIN_CIRCULATION_PUMP, true, function (err) {
+		pins.set(PIN_CIRCULATION_PUMP, true, function (err) {
 			if (err)
 				setError('failed to start pump: ' + err)
 		})
 		sensors.enable(true)
 		// set accurate flag after delay
 		function checkAccurate () {
-			inputs.get(PIN_FLOW_IN, function (err, value) {
+			pins.get(PIN_FLOW_IN, function (err, value) {
 				if (err) {
 					setError('failed to verify flow')
 					return
@@ -194,7 +188,7 @@ function circulate (duration) {
 		circulationEnd = end
 		circulationTimer = setTimeout(function () {
 			circulationEnd = 0
-			pumps.set(PIN_CIRCULATION_PUMP, false, function (err) {
+			pins.set(PIN_CIRCULATION_PUMP, false, function (err) {
 				if (err)
 					setError('failed to stop pump: ' + err)
 			})
@@ -228,12 +222,12 @@ function runPump (pump, duration) {
 
 	circulate(duration + CIRCULATION_TIME)
 
-	pumps.set(pumpPin, true, function (err) {
+	pins.set(pumpPin, true, function (err) {
 		if (err)
 			setError('failed to start pump: ' + err)
 
 		setTimeout(function () {
-			pumps.set(pumpPin, false, function (err) {
+			pins.set(pumpPin, false, function (err) {
 				if (err)
 					setError('failed to stop pump: ' + err)
 			})
