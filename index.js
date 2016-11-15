@@ -112,15 +112,15 @@ function checkAndAdjust () {
 			setError('reading out of range!')
 		} else if (reading.ph > PH_MAX) {
 			pump = 'acid'
-			duration = Math.max((reading.ph - PH_MAX) * ACID_SECONDS_PER_UNIT + ACID_EXTRA_SECONDS, ACID_MAX_SECONDS)
+			duration = Math.min((reading.ph - PH_MAX) * ACID_SECONDS_PER_UNIT + ACID_EXTRA_SECONDS, ACID_MAX_SECONDS)
 			delay = ACID_DELAY
 		} else if (reading.ph < PH_MIN) {
 			pump = 'base'
-			duration = Math.max((PH_MIN - reading.ph) * BASE_SECONDS_PER_UNIT + BASE_EXTRA_SECONDS, BASE_MAX_SECONDS)
+			duration = Math.min((PH_MIN - reading.ph) * BASE_SECONDS_PER_UNIT + BASE_EXTRA_SECONDS, BASE_MAX_SECONDS)
 			delay = BASE_DELAY
 		} else if (reading.orp < ORP_MIN) {
 			pump = 'chlorine'
-			duration = Math.max((ORP_MIN - reading.orp) * CHLORINE_SECONDS_PER_MV + CHLORINE_EXTRA_SECONDS, CHLORINE_MAX_SECONDS)
+			duration = Math.min((ORP_MIN - reading.orp) * CHLORINE_SECONDS_PER_MV + CHLORINE_EXTRA_SECONDS, CHLORINE_MAX_SECONDS)
 			delay = CHLORINE_DELAY
 		}
 
