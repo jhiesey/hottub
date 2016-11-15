@@ -65,7 +65,7 @@ pinDefs[PIN_CIRCULATION_PUMP] = { in: false }
 pinDefs[PIN_CHLORINE_PUMP] = { in: false }
 pinDefs[PIN_ACID_PUMP] = { in: false }
 pinDefs[PIN_BASE_PUMP] = { in: false }
-pinDefs[PIN_FLOW_IN] = { in: true }
+pinDefs[PIN_FLOW_IN] = { in: true, edge: 'falling' }
 pinDefs[PIN_ERROR_IN] = { in: true, edge: 'rising' }
 var pins = new Pins(pinDefs)
 pins.on('ready', function () {
@@ -73,9 +73,12 @@ pins.on('ready', function () {
 	checkAndAdjust()
 	startServer()
 })
+var onFlowStop = null
 pins.on('edge', function (pin, value) {
 	if (value && pin === PIN_ERROR_IN) {
 		checkErrorPin()
+	} else if (!value && pin === PIN_FLOW_IN && onFlowStop) {
+		onFlowStop()
 	}
 })
 
@@ -219,16 +222,38 @@ function runPump (pump, duration) {
 
 	circulate(duration + CIRCULATION_TIME)
 
-	pins.set(pumpPin, true, function (err) {
-		if (err)
-			setError('failed to start pump: ' + err)
-
-		setTimeout(function () {
-			pins.set(pumpPin, false, function (err) {
+	function stopPump() {
+		onFlowStop = null
+		pins.set(pumpPin, false, function (err) {
 				if (err)
 					setError('failed to stop pump: ' + err)
-			})
-		}, duration * 1000)
+		})
+	}
+
+	if (onFlowStop) {
+		setError('tried to run two chemical pumps at once!')
+		return
+	}
+	onFlowStop = function () {
+		stopPump()
+		console.error('flow stopped during chemical pumping!')
+	}
+	pins.get(PIN_FLOW_IN, function (err, value) {
+		if (err) {
+			setError('failed to verify flow')
+			return
+		}
+		if (!value) {
+			console.error('flow stopped before chemical pumping!')
+			return
+		}
+
+		pins.set(pumpPin, true, function (err) {
+			if (err)
+				setError('failed to start pump: ' + err)
+
+			setTimeout(stopPump, duration * 1000)
+		})
 	})
 }
 
