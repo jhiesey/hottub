@@ -27,9 +27,9 @@ const ORP_HARD_MAX = 900
 // ADJUSTMENT FACTORS
 const PH_MAX = 7.7
 const ACID_SECONDS_PER_UNIT = 25
-const ACID_EXTRA_SECONDS = 3
+const ACID_EXTRA_SECONDS = 3 // 0.12 units extra
 const ACID_MAX_SECONDS = 20
-const ACID_DELAY = 1800
+const ACID_DELAY = 30 * 60
 
 const PH_MIN = 0 // 7.3
 const BASE_SECONDS_PER_UNIT = 0 // TODO: establish this
@@ -38,8 +38,8 @@ const BASE_MAX_SECONDS = 0 // TODO: establish this
 const BASE_DELAY = 1800
 
 const ORP_MIN = 700
-const CHLORINE_SECONDS_PER_MV = 0.2
-const CHLORINE_EXTRA_SECONDS = 3
+const CHLORINE_SECONDS_PER_MV = 0.16
+const CHLORINE_EXTRA_SECONDS = 3 // 19 mv extra
 const CHLORINE_MAX_SECONDS = 30
 const CHLORINE_DELAY = 45 * 60
 
