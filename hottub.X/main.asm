@@ -103,7 +103,7 @@ delay
     goto goodFlow
     
     movf TMR1L, w
-    addlw 0xfa ; 6 counts minimum
+    addlw 0xeb ; 20 counts minimum
     skpnc
     goto goodFlow
     
