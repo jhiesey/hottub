@@ -24,35 +24,3 @@ function load() {
 }
 
 load()
-
-var runButton = document.getElementById('run-button')
-var durationField = document.getElementById('duration')
-var pumpButtons = document.getElementsByName('pump')
-
-runButton.addEventListener('click', function () {
-	var body = {
-		duration: parseFloat(durationField.value)
-	}
-	for (var i = 0; i < pumpButtons.length; i++) {
-		if (pumpButtons[i].checked) {
-			body.pump = pumpButtons[i].value
-			break
-		}
-	}
-
-	var xhr = new XMLHttpRequest()
-	xhr.open('POST', '/runpump')
-	xhr.setRequestHeader('Content-Type', 'application/json')
-	xhr.onreadystatechange = function () {
-		if (xhr.readyState === XMLHttpRequest.DONE) {
-			var body = null
-			if (xhr.status === 200) {
-				body = JSON.parse(xhr.response)
-			}
-			if (!body || !body.success) {
-				alert('Failed to run pump!')
-			}
-		}
-	}
-	xhr.send(JSON.stringify(body))
-})

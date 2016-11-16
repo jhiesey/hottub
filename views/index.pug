@@ -21,18 +21,4 @@ block body
         span(id='status-field')
           | #{status}
 
-    div
-      label(for='pump') Pump:
-      input(type='radio' name='pump' value='chlorine' checked)
-      | Chlorine
-      input(type='radio' name='pump' value='acid')
-      | Acid
-      input(type='radio' name='pump' value='base')
-      | Base
-    div
-      label(for='duration') Duration (seconds):
-      input(type='number' name='duration' id='duration' value='10')
-    div
-      button(id='run-button') Run
-
   script(src='index.js')

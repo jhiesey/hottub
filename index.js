@@ -302,29 +302,6 @@ app.get('/reading', function (req, res, next) {
 	})
 })
 
-app.post('/runpump', function (req, res, next) {
-	const pump = req.body.pump
-	const duration = parseFloat(req.body.duration)
-	if (duration <= 0 || duration > 60) {
-		next(new Error('invalid pump duration'))
-		return
-	}
-
-	var success = true
-	if (adjusting) {
-		success = false
-	} else {
-		try {
-			runPump(pump, duration)
-		} catch (e) {
-			success = false
-		}
-	}
-
-	res.setHeader('Content-Type', 'application/json')
-	res.send(JSON.stringify({ success }))
-})
-
 app.get('*', function (req, res) {
   res.status(404).render('error', {
     title: '404 Page Not Found - hottub.local',
