@@ -207,7 +207,7 @@ class Sensors extends EventEmitter {
 					if (err)
 						return cb(err)
 					if (line !== '*OK') {
-						return cb(new Error('Bad response line'))
+						return cb(new Error('Bad response line: "' + line + '"'))
 					}
 					cb()
 				})
@@ -240,7 +240,7 @@ class Sensors extends EventEmitter {
 					if (err)
 						return cb(err)
 					if (line !== '*OK')
-						return cb(new Error('Bad response line'))
+						return cb(new Error('Bad response line: "' + line + '"'))
 					cb()
 				})
 			}, function (cb) {
