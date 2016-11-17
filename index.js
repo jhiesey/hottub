@@ -77,8 +77,10 @@ var onFlowStop = null
 pins.on('edge', function (pin, value) {
 	if (value && pin === PIN_ERROR_IN) {
 		checkErrorPin()
-	} else if (!value && pin === PIN_FLOW_IN && onFlowStop) {
-		onFlowStop()
+	} else if (!value && pin === PIN_FLOW_IN) {
+		sensorsAccurate = false
+		if (onFlowStop)
+			onFlowStop()
 	}
 })
 
