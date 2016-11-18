@@ -165,7 +165,7 @@ function getAccurateReading(cb) {
 			var nowMs = Date.now()
 			if (value) {
 				circulate(SENSOR_READING_TIME)
-				if (acccurateTime === null) {
+				if (accurateTime === null) {
 					accurateTime = nowMs + SENSOR_READING_DELAY * 1000
 				} else {
 					if (accurateTime <= nowMs) {
