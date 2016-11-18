@@ -146,14 +146,19 @@ var accurateTime = null
 function getAccurateReading(cb) {
 	circulate(SENSOR_READING_DELAY)
 
+	function finished (err, reading) {
+		sensors.removeListener('reading', onReading)
+		if (cb) {
+			var callback = cb
+			cb = null
+			callback(err, reading)
+		}
+	}
+
 	function onReading (reading) {
 		pins.get(PIN_FLOW_IN, function (err, value) {
 			if (err) {
-				if (cb) {
-					var callback = cb
-					cb = null
-					callback(new Error('failed to verify flow'))
-				}
+				finished(new Error('failed to verify flow'))
 				return
 			}
 			// ensure flow is good for SENSOR_READING_DELAY
@@ -174,22 +179,13 @@ function getAccurateReading(cb) {
 			}
 
 			if (sensorsAccurate) {
-				sensors.removeListener('reading', onReading)
-				if (cb) {
-					var callback = cb
-					cb = null
-					callback(null, reading)
-				}
+				finished(null, reading)
 			}
 		})
 	}
 	sensors.on('reading', onReading)
 	setTimeout(function () {
-		if (cb) {
-			var callback = cb
-			cb = null
-			callback(null, null)
-		}
+		finished(null, null)
 	}, 2 * SENSOR_READING_DELAY * 1000) // give longer delay in case of intermittent flow
 }
 
