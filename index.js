@@ -79,6 +79,7 @@ pins.on('edge', function (pin, value) {
 		checkErrorPin()
 	} else if (!value && pin === PIN_FLOW_IN) {
 		sensorsAccurate = false
+		accurateTime = null
 		if (onFlowStop)
 			onFlowStop()
 	}
@@ -113,6 +114,8 @@ function checkAndAdjust () {
 		var delay = CHECK_INTERVAL
 		if (err) {
 			setError('failed to read: ' + err)
+		} else if (!reading) {
+			console.error('timed out waiting for flow')
 		} else if (reading.ph < PH_HARD_MIN || reading.ph > PH_HARD_MAX || reading.orp < ORP_HARD_MIN || reading.orp > ORP_HARD_MAX) {
 			setError('reading out of range!')
 		} else if (reading.ph > PH_MAX) {
@@ -139,17 +142,55 @@ function checkAndAdjust () {
 	})
 }
 
+var accurateTime = null
 function getAccurateReading(cb) {
-	circulate(SENSOR_READING_DELAY + SENSOR_READING_TIME)
+	circulate(SENSOR_READING_DELAY)
 
 	function onReading (reading) {
-		if (!sensorsAccurate)
-			return
+		pins.get(PIN_FLOW_IN, function (err, value) {
+			if (err) {
+				if (cb) {
+					var callback = cb
+					cb = null
+					callback(new Error('failed to verify flow'))
+				}
+				return
+			}
+			// ensure flow is good for SENSOR_READING_DELAY
+			var nowMs = Date.now()
+			if (value) {
+				circulate(SENSOR_READING_TIME)
+				if (acccurateTime === null) {
+					accurateTime = nowMs + SENSOR_READING_DELAY * 1000
+				} else {
+					if (accurateTime <= nowMs) {
+						sensorsAccurate = true
+					}
+				}
+			} else {
+				accurateTime = null
+				sensorsAccurate = false
+				console.error('no flow! waiting...')
+			}
 
-		sensors.removeListener('reading', onReading)
-		cb(null, reading)
+			if (sensorsAccurate) {
+				sensors.removeListener('reading', onReading)
+				if (cb) {
+					var callback = cb
+					cb = null
+					callback(null, reading)
+				}
+			}
+		})
 	}
 	sensors.on('reading', onReading)
+	setTimeout(function () {
+		if (cb) {
+			var callback = cb
+			cb = null
+			callback(null, null)
+		}
+	}, 2 * SENSOR_READING_DELAY * 1000) // give longer delay in case of intermittent flow
 }
 
 var circulationEnd = 0 // ms since epoch
@@ -164,24 +205,6 @@ function circulate (duration) {
 				setError('failed to start pump: ' + err)
 		})
 		sensors.enable(true)
-		// set accurate flag after delay
-		function checkAccurate () {
-			pins.get(PIN_FLOW_IN, function (err, value) {
-				if (err) {
-					setError('failed to verify flow')
-					return
-				}
-				if (value) {
-					if (circulationEnd !== 0) {
-						sensorsAccurate = true
-					}
-				} else {
-					console.error('no flow! retrying after delay...')
-					setTimeout(checkAccurate, SENSOR_READING_DELAY * 1000)
-				}
-			})
-		}
-		setTimeout(checkAccurate, SENSOR_READING_DELAY * 1000)
 	}
 
 	const end = Date.now() + duration * 1000
@@ -195,6 +218,7 @@ function circulate (duration) {
 					setError('failed to stop pump: ' + err)
 			})
 			sensors.enable(false)
+			accurateTime = null
 			sensorsAccurate = false
 		}, duration * 1000)
 	}
@@ -240,23 +264,17 @@ function runPump (pump, duration) {
 		stopPump()
 		console.error('flow stopped during chemical pumping!')
 	}
-	pins.get(PIN_FLOW_IN, function (err, value) {
-		if (err) {
-			setError('failed to verify flow')
-			return
-		}
-		if (!value) {
-			console.error('flow stopped before chemical pumping!')
-			return
-		}
-
+	if (sensorsAccurate) { // verifies circulation
 		pins.set(pumpPin, true, function (err) {
 			if (err)
 				setError('failed to start pump: ' + err)
 
 			setTimeout(stopPump, duration * 1000)
 		})
-	})
+	} else {
+		console.error('flow stopped before chemical pumping!')
+		return
+	}
 }
 
 const http = require('http')
