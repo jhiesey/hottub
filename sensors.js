@@ -130,6 +130,7 @@ class Sensors extends EventEmitter {
 			self._running = false
 			if (err) {
 				self._errorCount++
+				console.error('Error reading sensor; errorCount:', self._errorCount)
 			} else {
 				self._errorCount = 0
 			}
