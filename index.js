@@ -47,16 +47,40 @@ var status = null
 
 const sensors = new Sensors()
 var lastReading = null
+var accurateTime = null
+var sensorsAccurate = false
 sensors.on('reading', function (reading) {
 	lastReading = reading
-	if (!sensorsAccurate)
-		return
 
-	var now = new Date()
-	var line = [now.toLocaleDateString(), now.toLocaleTimeString(), reading.temp, reading.ph, reading.orp].join(',') + '\n'
-	fs.appendFile('readings.csv', line, function (err) {
-		if (err)
-			setError('failed log reading: ' + err)
+	pins.get(PIN_FLOW_IN, function (err, value) {
+		if (err) {
+			setError('failed to verify flow')
+			return
+		}
+		// ensure flow is good for SENSOR_READING_DELAY
+		var now = Date.now()
+		if (value) {
+			if (accurateTime === null) {
+				accurateTime = now.getTime() + SENSOR_READING_DELAY * 1000
+			} else {
+				if (accurateTime <= now.getTime()) {
+					sensorsAccurate = true
+				}
+			}
+		} else {
+			accurateTime = null
+			sensorsAccurate = false
+		}
+
+		if (!sensorsAccurate)
+			return
+
+		var line = [now.toLocaleDateString(), now.toLocaleTimeString(), reading.temp, reading.ph, reading.orp].join(',') + '\n'
+		fs.appendFile('readings.csv', line, function (err) {
+			if (err)
+				setError('failed log reading: ' + err)
+		})
+
 	})
 })
 
@@ -142,9 +166,8 @@ function checkAndAdjust () {
 	})
 }
 
-var accurateTime = null
 function getAccurateReading(cb) {
-	circulate(SENSOR_READING_DELAY)
+	circulate(2 * SENSOR_READING_DELAY + SENSOR_READING_TIME)
 
 	function finished (err, reading) {
 		sensors.removeListener('reading', onReading)
@@ -156,32 +179,9 @@ function getAccurateReading(cb) {
 	}
 
 	function onReading (reading) {
-		pins.get(PIN_FLOW_IN, function (err, value) {
-			if (err) {
-				finished(new Error('failed to verify flow'))
-				return
-			}
-			// ensure flow is good for SENSOR_READING_DELAY
-			var nowMs = Date.now()
-			if (value) {
-				circulate(SENSOR_READING_TIME)
-				if (accurateTime === null) {
-					accurateTime = nowMs + SENSOR_READING_DELAY * 1000
-				} else {
-					if (accurateTime <= nowMs) {
-						sensorsAccurate = true
-					}
-				}
-			} else {
-				accurateTime = null
-				sensorsAccurate = false
-				console.error('no flow! waiting...')
-			}
-
-			if (sensorsAccurate) {
-				finished(null, reading)
-			}
-		})
+		if (sensorsAccurate) {
+			finished(null, reading)
+		}
 	}
 	sensors.on('reading', onReading)
 	setTimeout(function () {
