@@ -58,7 +58,7 @@ sensors.on('reading', function (reading) {
 			return
 		}
 		// ensure flow is good for SENSOR_READING_DELAY
-		var now = Date.now()
+		var now = new Date()
 		if (value) {
 			if (accurateTime === null) {
 				accurateTime = now.getTime() + SENSOR_READING_DELAY * 1000
