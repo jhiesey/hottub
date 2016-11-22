@@ -137,13 +137,13 @@ checkLogic
     ; AND at least one chemical pump is on
     banksel PORTB
     movlw 1
-    btfsc PORTB, 5 ; circulation pump
+    btfsc PORTA, 4 ; circulation pump
     movwf flowBad
     
     movlw 0
-    btfss PORTA, 4 ; chlorine pump
+    btfss PORTB, 4 ; chlorine pump
     addlw 1
-    btfss PORTB, 4 ; acid pump
+    btfss PORTB, 5 ; acid pump
     addlw 1
     btfss PORTB, 6 ; base pump
     addlw 1
