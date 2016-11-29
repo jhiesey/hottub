@@ -41,7 +41,7 @@ const ORP_MIN = 680
 const CHLORINE_SECONDS_PER_MV = 0.45
 const CHLORINE_EXTRA_MV = 15
 const CHLORINE_MAX_SECONDS = 30
-const CHLORINE_DELAY = 45 * 60
+const CHLORINE_DELAY = 30 * 60
 
 var status = null
 
