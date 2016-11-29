@@ -37,7 +37,7 @@ const BASE_EXTRA_UNITS = 0 // TODO: establish this
 const BASE_MAX_SECONDS = 0 // TODO: establish this
 const BASE_DELAY = 1800
 
-const ORP_MIN = 700
+const ORP_MIN = 680
 const CHLORINE_SECONDS_PER_MV = 0.45
 const CHLORINE_EXTRA_MV = 15
 const CHLORINE_MAX_SECONDS = 30
