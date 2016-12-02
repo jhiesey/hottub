@@ -95,6 +95,7 @@ pinDefs[PIN_ERROR_IN] = { in: true, edge: 'rising' }
 var pins = new Pins(pinDefs)
 pins.on('ready', function () {
 	checkErrorPin()
+	circulate(POWER_ON_DELAY + SENSOR_READING_DELAY)
 	setTimeout(checkAndAdjust, POWER_ON_DELAY * 1000)
 	startServer()
 })
