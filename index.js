@@ -76,7 +76,7 @@ sensors.on('reading', function (reading) {
 			return
 
 		var line = [now.toLocaleDateString(), now.toLocaleTimeString(), reading.temp, reading.ph, reading.orp].join(',') + '\n'
-		fs.appendFile('readings.csv', line, function (err) {
+		fs.appendFile('log/readings.csv', line, function (err) {
 			if (err)
 				setError('failed log reading: ' + err)
 		})
@@ -237,7 +237,7 @@ function runPump (pump, duration) {
 	}
 	var now = new Date()
 	var line = [now.toLocaleDateString(), now.toLocaleTimeString(), pump, duration].join(',') + '\n'
-	fs.appendFile('adjustments.csv', line, function (err) {
+	fs.appendFile('log/adjustments.csv', line, function (err) {
 		if (err)
 			setError('failed to log adjustment: ' + err)
 	})
