@@ -17,6 +17,7 @@ const READING_CIRCULATION_TIME = 30 // seconds
 const SENSOR_READING_DELAY = 60 // seconds
 const SENSOR_READING_TIME = 60 // seconds
 const CHECK_INTERVAL = 15 * 60 // seconds
+const POWER_ON_DELAY = 45 * 60 // seconds
 
 // SANITY PARAMETERS
 const PH_HARD_MIN = 5.8
@@ -94,7 +95,7 @@ pinDefs[PIN_ERROR_IN] = { in: true, edge: 'rising' }
 var pins = new Pins(pinDefs)
 pins.on('ready', function () {
 	checkErrorPin()
-	checkAndAdjust()
+	setTimeout(checkAndAdjust, POWER_ON_DELAY * 1000)
 	startServer()
 })
 var onFlowStop = null
