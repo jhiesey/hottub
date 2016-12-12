@@ -170,6 +170,7 @@ fail
     ; set fail output
     banksel LATC
     bsf LATC, 0
+    bcf LATC, 1
     
 deadLoop
     goto deadLoop
