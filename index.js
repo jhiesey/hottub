@@ -32,12 +32,6 @@ const ACID_EXTRA_UNITS = 0.15
 const ACID_MAX_SECONDS = 20
 const ACID_DELAY = 30 * 60
 
-const PH_MIN = 0 // 7.3
-const BASE_SECONDS_PER_UNIT = 0 // TODO: establish this
-const BASE_EXTRA_UNITS = 0 // TODO: establish this
-const BASE_MAX_SECONDS = 0 // TODO: establish this
-const BASE_DELAY = 1800
-
 const ORP_MIN = 680
 const CHLORINE_SECONDS_PER_MV = 0.45
 const CHLORINE_EXTRA_MV = 15
@@ -148,10 +142,6 @@ function checkAndAdjust () {
 			pump = 'acid'
 			duration = Math.min((reading.ph - PH_MAX + ACID_EXTRA_UNITS) * ACID_SECONDS_PER_UNIT, ACID_MAX_SECONDS)
 			delay = ACID_DELAY
-		} else if (reading.ph < PH_MIN) {
-			pump = 'base'
-			duration = Math.min((PH_MIN - reading.ph + BASE_EXTRA_UNITS) * BASE_SECONDS_PER_UNIT, BASE_MAX_SECONDS)
-			delay = BASE_DELAY
 		} else if (reading.orp < ORP_MIN) {
 			pump = 'chlorine'
 			duration = Math.min((ORP_MIN - reading.orp + CHLORINE_EXTRA_MV) * CHLORINE_SECONDS_PER_MV, CHLORINE_MAX_SECONDS)
