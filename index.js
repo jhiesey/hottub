@@ -27,14 +27,16 @@ const ORP_HARD_MAX = 900
 
 // ADJUSTMENT FACTORS
 const PH_MAX = 7.6
-const ACID_SECONDS_PER_UNIT = 25
-const ACID_EXTRA_UNITS = 0.15
+const ACID_SECONDS_PER_UNIT = 30
+const ACID_GAIN = 0.8
+const ACID_EXTRA_UNITS = 0.12
 const ACID_MAX_SECONDS = 20
 const ACID_DELAY = 30 * 60
 
-const ORP_MIN = 680
-const CHLORINE_SECONDS_PER_MV = 0.45
-const CHLORINE_EXTRA_MV = 15
+const ORP_MIN = 670
+const CHLORINE_SECONDS_PER_MV = 1.0
+const ORP_GAIN = 0.45
+const CHLORINE_EXTRA_MV = 8
 const CHLORINE_MAX_SECONDS = 30
 const CHLORINE_DELAY = 30 * 60
 
@@ -140,11 +142,11 @@ function checkAndAdjust () {
 			setError('reading out of range!')
 		} else if (reading.ph > PH_MAX) {
 			pump = 'acid'
-			duration = Math.min((reading.ph - PH_MAX + ACID_EXTRA_UNITS) * ACID_SECONDS_PER_UNIT, ACID_MAX_SECONDS)
+			duration = Math.min(((reading.ph - PH_MAX) * ACID_GAIN + ACID_EXTRA_UNITS) * ACID_SECONDS_PER_UNIT, ACID_MAX_SECONDS)
 			delay = ACID_DELAY
 		} else if (reading.orp < ORP_MIN) {
 			pump = 'chlorine'
-			duration = Math.min((ORP_MIN - reading.orp + CHLORINE_EXTRA_MV) * CHLORINE_SECONDS_PER_MV, CHLORINE_MAX_SECONDS)
+			duration = Math.min(((ORP_MIN - reading.orp) * ORP_GAIN + CHLORINE_EXTRA_MV) * CHLORINE_SECONDS_PER_MV, CHLORINE_MAX_SECONDS)
 			delay = CHLORINE_DELAY
 		}
 
