@@ -33,7 +33,7 @@ const ACID_EXTRA_UNITS = 0.12
 const ACID_MAX_SECONDS = 20
 const ACID_DELAY = 30 * 60
 
-const ORP_MIN = 670
+const ORP_MIN = 680
 const CHLORINE_SECONDS_PER_MV = 0.5
 const ORP_GAIN = 0.8
 const CHLORINE_EXTRA_MV = 8
