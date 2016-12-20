@@ -14,9 +14,9 @@ const PIN_FLOW_IN = 7
 // BASIC TIMING
 const CIRCULATION_TIME = 3600 // seconds; 1 hour
 const READING_CIRCULATION_TIME = 30 // seconds
-const SENSOR_READING_DELAY = 60 // seconds
-const SENSOR_READING_TIME = 60 // seconds
-const CHECK_INTERVAL = 15 * 60 // seconds
+const SENSOR_READING_DELAY = 40 // seconds
+const SENSOR_READING_TIME = 30 // seconds
+const CHECK_INTERVAL = 10 * 60 // seconds
 const POWER_ON_DELAY = 60 * 60 // seconds
 
 // SANITY PARAMETERS
@@ -31,14 +31,14 @@ const ACID_SECONDS_PER_UNIT = 30
 const ACID_GAIN = 0.8
 const ACID_EXTRA_UNITS = 0.12
 const ACID_MAX_SECONDS = 20
-const ACID_DELAY = 30 * 60
+const ACID_DELAY = 15 * 60
 
 const ORP_MIN = 710
 const CHLORINE_SECONDS_PER_MV = 1.0
-const ORP_GAIN = 0.8
+const ORP_GAIN = 1.6
 const CHLORINE_EXTRA_MV = 10
-const CHLORINE_MAX_SECONDS = 45
-const CHLORINE_DELAY = 30 * 60
+const CHLORINE_MAX_SECONDS = 55
+const CHLORINE_DELAY = 15 * 60
 
 var status = null
 
