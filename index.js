@@ -6,7 +6,7 @@ const fs = require('fs')
 const PIN_CIRCULATION_PUMP = 24
 const PIN_CHLORINE_PUMP = 25
 const PIN_ACID_PUMP = 11
-const PIN_BASE_PUMP = 9
+const PIN_BICARB_PUMP = 9
 
 const PIN_ERROR_IN = 8
 const PIN_FLOW_IN = 7
@@ -18,6 +18,7 @@ const SENSOR_READING_DELAY = 40 // seconds
 const SENSOR_READING_TIME = 30 // seconds
 const CHECK_INTERVAL = 10 * 60 // seconds
 const POWER_ON_DELAY = 60 * 60 // seconds
+const POST_ADJUSTMENT_DELAY = 15 * 60 // seconds
 
 // SANITY PARAMETERS
 const PH_HARD_MIN = 5.8
@@ -31,14 +32,19 @@ const ACID_SECONDS_PER_UNIT = 35
 const ACID_GAIN = 0.8
 const ACID_EXTRA_UNITS = 0.15
 const ACID_MAX_SECONDS = 20
-const ACID_DELAY = 15 * 60
 
 const ORP_MIN = 710
 const CHLORINE_SECONDS_PER_MV = 0.8
 const ORP_GAIN = 1.8
 const CHLORINE_EXTRA_MV = 10
 const CHLORINE_MAX_SECONDS = 55
-const CHLORINE_DELAY = 15 * 60
+
+// dissove 70g/l sodium bicarbonate in water; roughly 10g/min
+// measure ratio of ph change to expected ph change
+// if the change in ph is more than this times the expected, add bicarb for buffering
+const MAX_DELTA_PH_RATIO = 1.2
+const PH_MIN = 7.3
+const BICARBONATE_SECONDS = 55
 
 var status = null
 
@@ -85,7 +91,7 @@ var pinDefs = {}
 pinDefs[PIN_CIRCULATION_PUMP] = { in: false }
 pinDefs[PIN_CHLORINE_PUMP] = { in: false }
 pinDefs[PIN_ACID_PUMP] = { in: false }
-pinDefs[PIN_BASE_PUMP] = { in: false }
+pinDefs[PIN_BICARB_PUMP] = { in: false }
 pinDefs[PIN_FLOW_IN] = { in: true, edge: 'falling' }
 pinDefs[PIN_ERROR_IN] = { in: true, edge: 'rising' }
 var pins = new Pins(pinDefs)
@@ -124,6 +130,10 @@ function setError (message) {
 	status = status || message
 }
 
+// For measuring the expected vs. actual ph change
+var acidStart = null
+var acidPhDeltaGoal = null
+
 var adjusting = false
 function checkAndAdjust () {
 	if (adjusting || status)
@@ -140,14 +150,22 @@ function checkAndAdjust () {
 			console.error('timed out waiting for flow')
 		} else if (reading.ph < PH_HARD_MIN || reading.ph > PH_HARD_MAX || reading.orp < ORP_HARD_MIN || reading.orp > ORP_HARD_MAX) {
 			setError('reading out of range!')
+		} else if (reading.ph < PH_MIN || (acidStart !== null && (acidStart - reading.ph) > MAX_DELTA_PH_RATIO * acidPhDeltaGoal)) {
+			acidStart = null
+			acidPhDeltaGoal = null
+			pump = 'bicarbonate'
+			duration = BICARBONATE_SECONDS
+			delay = POST_ADJUSTMENT_DELAY
 		} else if (reading.ph > PH_MAX) {
 			pump = 'acid'
 			duration = Math.min(((reading.ph - PH_MAX) * ACID_GAIN + ACID_EXTRA_UNITS) * ACID_SECONDS_PER_UNIT, ACID_MAX_SECONDS)
-			delay = ACID_DELAY
+			acidStart = reading.ph
+			acidPhDeltaGoal = duration / ACID_SECONDS_PER_UNIT
+			delay = POST_ADJUSTMENT_DELAY
 		} else if (reading.orp < ORP_MIN) {
 			pump = 'chlorine'
 			duration = Math.min(((ORP_MIN - reading.orp) * ORP_GAIN + CHLORINE_EXTRA_MV) * CHLORINE_SECONDS_PER_MV, CHLORINE_MAX_SECONDS)
-			delay = CHLORINE_DELAY
+			delay = POST_ADJUSTMENT_DELAY
 		}
 
 		if (duration > 0) {
@@ -223,8 +241,8 @@ function runPump (pump, duration) {
 		case 'acid':
 			pumpPin = PIN_ACID_PUMP
 			break
-		case 'base':
-			pumpPin = PIN_BASE_PUMP
+		case 'bicarbonate':
+			pumpPin = PIN_BICARB_PUMP
 			break
 		default:
 			throw new Error('invalid pump specified')
