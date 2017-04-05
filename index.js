@@ -39,7 +39,7 @@ const ORP_GAIN = 1.8
 const CHLORINE_EXTRA_MV = 10
 const CHLORINE_MAX_SECONDS = 55
 
-// dissove 70g/l sodium bicarbonate in water; roughly 10g/min
+// dissove 70g/l (265g/gal) sodium bicarbonate in water; roughly 10g/min
 // measure ratio of ph change to expected ph change
 // if the change in ph is more than this times the expected, add bicarb for buffering
 const MAX_DELTA_PH_RATIO = 1.2
