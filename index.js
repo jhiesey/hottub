@@ -42,8 +42,8 @@ const CHLORINE_MAX_SECONDS = 55
 // dissove 70g/l (265g/gal) sodium bicarbonate in water; roughly 10g/min
 // measure ratio of ph change to expected ph change
 // if the change in ph is more than this times the expected, add bicarb for buffering
-const MAX_DELTA_PH_RATIO = 1.2
-const PH_MIN = 7.3
+const MAX_DELTA_PH_RATIO = 2.6
+const PH_MIN = 7.2
 const BICARBONATE_SECONDS = 55
 
 var status = null
@@ -149,8 +149,8 @@ function checkAndAdjust () {
 		} else if (!reading) {
 			console.error('timed out waiting for flow')
 		} else if (reading.ph < PH_HARD_MIN || reading.ph > PH_HARD_MAX || reading.orp < ORP_HARD_MIN || reading.orp > ORP_HARD_MAX) {
-			setError('reading out of range!')
-		} else if (reading.ph < PH_MIN || (acidStart !== null && (acidStart - reading.ph) > MAX_DELTA_PH_RATIO * acidPhDeltaGoal)) {
+			setError('reading out of range: ph=' + reading.ph + ', orp=' + reading.orp)
+		} else if (reading.ph < PH_MIN /* || (acidStart !== null && (acidStart - reading.ph) > MAX_DELTA_PH_RATIO * acidPhDeltaGoal)*/) {
 			acidStart = null
 			acidPhDeltaGoal = null
 			pump = 'bicarbonate'
