@@ -1,6 +1,7 @@
 const Sensors = require('./sensors')
 const Pins = require('./pins')
 const fs = require('fs')
+const subprocess = require('child_process')
 
 // PINS
 const PIN_CIRCULATION_PUMP = 24
@@ -33,8 +34,8 @@ const ACID_GAIN = 0.8
 const ACID_EXTRA_UNITS = 0.15
 const ACID_MAX_SECONDS = 20
 
-const ORP_MIN = 710
-const CHLORINE_SECONDS_PER_MV = 0.8
+const ORP_MIN = 690
+const CHLORINE_SECONDS_PER_MV = 0.6
 const ORP_GAIN = 1.8
 const CHLORINE_EXTRA_MV = 10
 const CHLORINE_MAX_SECONDS = 55
@@ -43,7 +44,7 @@ const CHLORINE_MAX_SECONDS = 55
 // measure ratio of ph change to expected ph change
 // if the change in ph is more than this times the expected, add bicarb for buffering
 const MAX_DELTA_PH_RATIO = 2.6
-const PH_MIN = 7.2
+const PH_MIN = 7.28
 const BICARBONATE_SECONDS = 55
 
 var status = null
@@ -52,16 +53,20 @@ const sensors = new Sensors()
 var lastReading = null
 var accurateTime = null
 var sensorsAccurate = false
+var flowGood = false
 sensors.on('reading', function (reading) {
 	lastReading = reading
 
 	pins.get(PIN_FLOW_IN, function (err, value) {
 		if (err) {
+			sensorsAccurate = false
+			flowGood = false
 			setError('failed to verify flow')
 			return
 		}
 		// ensure flow is good for SENSOR_READING_DELAY
 		var now = new Date()
+		flowGood = !!value
 		if (value) {
 			if (accurateTime === null) {
 				accurateTime = now.getTime() + SENSOR_READING_DELAY * 1000
@@ -107,6 +112,7 @@ pins.on('edge', function (pin, value) {
 		checkErrorPin()
 	} else if (!value && pin === PIN_FLOW_IN) {
 		sensorsAccurate = false
+		flowGood = false
 		accurateTime = null
 		if (onFlowStop)
 			onFlowStop()
@@ -150,7 +156,10 @@ function checkAndAdjust () {
 			console.error('timed out waiting for flow')
 		} else if (reading.ph < PH_HARD_MIN || reading.ph > PH_HARD_MAX || reading.orp < ORP_HARD_MIN || reading.orp > ORP_HARD_MAX) {
 			setError('reading out of range: ph=' + reading.ph + ', orp=' + reading.orp)
-		} else if (reading.ph < PH_MIN /* || (acidStart !== null && (acidStart - reading.ph) > MAX_DELTA_PH_RATIO * acidPhDeltaGoal)*/) {
+			subprocess.exec('sudo reboot', function (err, stdout, stderr) {
+				console.log(err)
+			})
+		} else if (false /* reading.ph < PH_MIN /* || (acidStart !== null && (acidStart - reading.ph) > MAX_DELTA_PH_RATIO * acidPhDeltaGoal)*/) {
 			acidStart = null
 			acidPhDeltaGoal = null
 			pump = 'bicarbonate'
@@ -203,7 +212,6 @@ function getAccurateReading(cb) {
 
 var circulationEnd = 0 // ms since epoch
 var circulationTimer = 0
-var sensorsAccurate = false
 // ensures the circulation pump will run for at least duration seconds
 function circulate (duration) {
 	// if not running
@@ -228,6 +236,7 @@ function circulate (duration) {
 			sensors.enable(false)
 			accurateTime = null
 			sensorsAccurate = false
+			flowGood = false
 		}, duration * 1000)
 	}
 }
@@ -324,6 +333,7 @@ app.get('/reading', function (req, res, next) {
 			ph: reading.ph,
 			orp: reading.orp,
 			accurate: sensorsAccurate,
+			flowGood: flowGood,
 			status: status || 'ok'
 		}
 		res.send(JSON.stringify(fullReading))
