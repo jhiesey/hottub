@@ -15,6 +15,7 @@ const EventEmitter = require('events')
 const fs = require('fs')
 const async = require('async')
 const SerialPort = require('serialport')
+const Readline = require('@serialport/parser-readline')
 const Pins = require('./pins')
 
 const RESPONSE_TIMEOUT = 1000 // ms
@@ -39,7 +40,7 @@ class Sensors extends EventEmitter {
 		pinNums[PIN_MUX_Y] = { in: false }
 		self._pins = new Pins(pinNums)
 		function ready () {
-			if (self._uart.isOpen() && self._pins.ready) {
+			if (self._uart.isOpen && self._pins.ready) {
 				self._ready = true
 				self._loop()
 			}
@@ -48,14 +49,17 @@ class Sensors extends EventEmitter {
 
 		self._uart = new SerialPort('/dev/ttyAMA0', {
 			baudRate: 9600,
-			parser: SerialPort.parsers.readline('\r')
 		})
+		self._parser = new Readline({
+			delimiter: '\r'
+		})
+		self._uart.pipe(self._parser)
 		self._lines = []
 		self._lineCbs = []
 
-		self._uart.on('open', ready)
+		self._parser.on('open', ready)
 
-		self._uart.on('data', function (data) {
+		self._parser.on('data', function (data) {
 			if (self._lineCbs.length) {
 				self._lineCbs.shift()(null, data)
 			} else {
@@ -63,7 +67,7 @@ class Sensors extends EventEmitter {
 			}
 		})
 
-		self._uart.on('error', function (err) {
+		self._parser.on('error', function (err) {
 			self._lineCbs.forEach(function (cb) {
 				cb(err)
 			})
