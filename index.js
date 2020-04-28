@@ -47,7 +47,7 @@ const MAX_DELTA_PH_RATIO = 2.6
 const PH_MIN = 7.28
 const BICARBONATE_SECONDS = 55
 
-var status = null
+var fatalError = null
 
 const sensors = new Sensors()
 var lastReading = null
@@ -144,7 +144,7 @@ function printWarning (message) {
 
 function setError (message) {
 	console.error((new Date()).toLocaleDateString() + ': ' + message)
-	status = status || message
+	fatalError = fatalError || message
 }
 
 // For measuring the expected vs. actual ph change
@@ -153,7 +153,7 @@ var acidPhDeltaGoal = null
 
 var adjusting = false
 function checkAndAdjust () {
-	if (adjusting || status)
+	if (adjusting || fatalError)
 		return
 
 	adjusting = true
@@ -305,6 +305,18 @@ function runPump (pump, duration) {
 	}
 }
 
+function getStatus () {
+	if (sensorsAccurate) {
+		return 'readings accurate'
+	} else if (!flowGood) {
+		return 'no flow'
+	} else if (fatalError) {
+		return 'ERROR'
+	} else {
+		return 'waiting for readings to stabilize'
+	}
+}
+
 const http = require('http')
 const pug = require('pug')
 const express = require('express')
@@ -327,9 +339,10 @@ app.get('/', function (req, res, next) {
 		temp: lastReading ? lastReading.temp : '?',
 		ph: lastReading ? lastReading.ph : '?',
 		orp: lastReading ? lastReading.orp : '?',
+		sensorStatus: getStatus(),
 		flowGood: flowGood ? 'YES' : 'NO',
 		lastFlowGood: flowGood ? 'now' : (lastFlowGood ? lastFlowGood.toLocaleDateString() : 'never'),
-		fatalError: status || 'none'
+		fatalError: fatalError || 'none'
 	})
 })
 
@@ -346,9 +359,10 @@ app.get('/reading', function (req, res, next) {
 			ph: reading.ph,
 			orp: reading.orp,
 			accurate: sensorsAccurate,
+			sensorStatus: getStatus(),
 			flowGood,
 			lastFlowGood: flowGood ? 'now' : (lastFlowGood ? lastFlowGood.toLocaleDateString() : 'never'),
-			fatalError: status || 'none'
+			fatalError: fatalError || 'none'
 		}
 		res.send(JSON.stringify(fullReading))
 	})

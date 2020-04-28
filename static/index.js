@@ -2,6 +2,8 @@ var readings = document.getElementById('readings')
 var tempReading = document.getElementById('temp-reading')
 var orpReading = document.getElementById('orp-reading')
 var phReading = document.getElementById('ph-reading')
+var sensorStatus = document.getElementById('sensor-status')
+var phReading = document.getElementById('ph-reading')
 var flowGood = document.getElementById('flow-good')
 var lastFlowGood = document.getElementById('last-flow-good')
 var fatalErrorField = document.getElementById('fatal-error-field')
@@ -17,6 +19,7 @@ function load() {
 				tempReading.innerHTML = body.temp
 				orpReading.innerHTML = body.orp
 				phReading.innerHTML = body.ph
+				sensorStatus.innerHTML = body.sensorStatus
 				flowGood.innerHTML = body.flowGood ? 'YES' : 'NO'
 				flowGood.className = body.flowGood ? 'state-good' : 'state-bad'
 				lastFlowGood.innerHTML = body.lastFlowGood

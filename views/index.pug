@@ -17,6 +17,10 @@ block body
         span(id='ph-reading' class='reading')
           | #{ph}
       p
+        | Sensor status:&nbsp;
+        span(id='sensor-status')
+          | #{sensorStatus}
+      p
         | Water flowing now:&nbsp;
         span(id='flow-good')
           | #{flowGood}
