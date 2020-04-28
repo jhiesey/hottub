@@ -2,7 +2,9 @@ var readings = document.getElementById('readings')
 var tempReading = document.getElementById('temp-reading')
 var orpReading = document.getElementById('orp-reading')
 var phReading = document.getElementById('ph-reading')
-var statusField = document.getElementById('status-field')
+var flowGood = document.getElementById('flow-good')
+var lastFlowGood = document.getElementById('last-flow-good')
+var fatalErrorField = document.getElementById('fatal-error-field')
 
 function load() {
 	var xhr = new XMLHttpRequest()
@@ -15,7 +17,11 @@ function load() {
 				tempReading.innerHTML = body.temp
 				orpReading.innerHTML = body.orp
 				phReading.innerHTML = body.ph
-				statusField.innerHTML = body.status
+				flowGood.innerHTML = body.flowGood ? 'YES' : 'NO'
+				flowGood.className = body.flowGood ? 'state-good' : 'state-bad'
+				lastFlowGood.innerHTML = body.lastFlowGood
+				fatalErrorField.innerHTML = body.fatalError
+				fatalErrorField.className = body.fatalError === 'none' ? 'state-good' : 'state-bad'
 			}
 			setTimeout(load, 500)
 		}

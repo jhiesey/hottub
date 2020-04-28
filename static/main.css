@@ -11,3 +11,11 @@ body {
 	color: green;
 	font-size: 150%;
 }
+
+.state-good {
+	color: green;
+}
+
+.state-bad {
+	color: red;
+}

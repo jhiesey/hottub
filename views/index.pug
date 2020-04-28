@@ -17,8 +17,16 @@ block body
         span(id='ph-reading' class='reading')
           | #{ph}
       p
-        | status:&nbsp;
-        span(id='status-field')
-          | #{status}
+        | Water flowing now:&nbsp;
+        span(id='flow-good')
+          | #{flowGood}
+      p
+        | Water last flowing at:&nbsp;
+        span(id='last-flow-good')
+          | #{lastFlowGood}
+      p
+        | Serious errors:&nbsp;
+        span(id='fatal-error-field')
+          | #{fatalError}
 
   script(src='index.js')

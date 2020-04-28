@@ -54,6 +54,7 @@ var lastReading = null
 var accurateTime = null
 var sensorsAccurate = false
 var flowGood = false
+var lastFlowGood = null
 sensors.on('reading', function (reading) {
 	lastReading = reading
 
@@ -66,8 +67,9 @@ sensors.on('reading', function (reading) {
 		}
 		// ensure flow is good for SENSOR_READING_DELAY
 		var now = new Date()
-		flowGood = !!value
 		if (value) {
+			flowGood = true
+			lastFlowGood = now
 			if (accurateTime === null) {
 				accurateTime = now.getTime() + SENSOR_READING_DELAY * 1000
 			} else {
@@ -76,6 +78,7 @@ sensors.on('reading', function (reading) {
 				}
 			}
 		} else {
+			flowGood = false
 			accurateTime = null
 			sensorsAccurate = false
 		}
@@ -131,8 +134,16 @@ function checkErrorPin () {
 	})
 }
 
+function printLog (message) {
+	console.log((new Date()).toLocaleDateString() + ': ' + message)
+}
+
+function printWarning (message) {
+	console.warn((new Date()).toLocaleDateString() + ': ' + message)
+}
+
 function setError (message) {
-	console.error(message)
+	console.error((new Date()).toLocaleDateString() + ': ' + message)
 	status = status || message
 }
 
@@ -153,11 +164,11 @@ function checkAndAdjust () {
 		if (err) {
 			setError('failed to read: ' + err)
 		} else if (!reading) {
-			console.error('timed out waiting for flow')
+			printWarning('timed out waiting for flow')
 		} else if (reading.ph < PH_HARD_MIN || reading.ph > PH_HARD_MAX || reading.orp < ORP_HARD_MIN || reading.orp > ORP_HARD_MAX) {
 			setError('reading out of range: ph=' + reading.ph + ', orp=' + reading.orp)
 			subprocess.exec('sudo reboot', function (err, stdout, stderr) {
-				console.log(err)
+				printLog(err)
 			})
 		} else if (false /* reading.ph < PH_MIN /* || (acidStart !== null && (acidStart - reading.ph) > MAX_DELTA_PH_RATIO * acidPhDeltaGoal)*/) {
 			acidStart = null
@@ -178,7 +189,7 @@ function checkAndAdjust () {
 		}
 
 		if (duration > 0) {
-			console.log('RUNNING PUMP:', pump, 'FOR DURATION:', duration)
+			printLog('RUNNING PUMP:', pump, 'FOR DURATION:', duration)
 			runPump(pump, duration)
 		}
 
@@ -279,7 +290,7 @@ function runPump (pump, duration) {
 	}
 	onFlowStop = function () {
 		stopPump()
-		console.error('flow stopped during chemical pumping!')
+		printWarning('flow stopped during chemical pumping!')
 	}
 	if (sensorsAccurate) { // verifies circulation
 		pins.set(pumpPin, true, function (err) {
@@ -289,7 +300,7 @@ function runPump (pump, duration) {
 			setTimeout(stopPump, duration * 1000)
 		})
 	} else {
-		console.error('flow stopped before chemical pumping!')
+		printWarning('flow stopped before chemical pumping!')
 		return
 	}
 }
@@ -316,7 +327,9 @@ app.get('/', function (req, res, next) {
 		temp: lastReading ? lastReading.temp : '?',
 		ph: lastReading ? lastReading.ph : '?',
 		orp: lastReading ? lastReading.orp : '?',
-		status: status || 'ok'
+		flowGood: flowGood ? 'YES' : 'NO',
+		lastFlowGood: flowGood ? 'now' : (lastFlowGood ? lastFlowGood.toLocaleDateString() : 'never'),
+		fatalError: status || 'none'
 	})
 })
 
@@ -333,8 +346,9 @@ app.get('/reading', function (req, res, next) {
 			ph: reading.ph,
 			orp: reading.orp,
 			accurate: sensorsAccurate,
-			flowGood: flowGood,
-			status: status || 'ok'
+			flowGood,
+			lastFlowGood: flowGood ? 'now' : (lastFlowGood ? lastFlowGood.toLocaleDateString() : 'never'),
+			fatalError: status || 'none'
 		}
 		res.send(JSON.stringify(fullReading))
 	})
@@ -361,5 +375,5 @@ function startServer() {
 }
 
 function error (err) {
-  console.error(err.stack || err.message || err)
+  printWarning(err.stack || err.message || err)
 }
