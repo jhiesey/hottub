@@ -5,9 +5,9 @@ const subprocess = require('child_process')
 
 // PINS
 const PIN_CIRCULATION_PUMP = 24
-const PIN_CHLORINE_PUMP = 25
-const PIN_ACID_PUMP = 11
-const PIN_BICARB_PUMP = 9
+const PIN_CHLORINE_PUMP = 9
+const PIN_ACID_PUMP = 25
+const PIN_BICARB_PUMP = 11 // Physical pump damaged
 
 const PIN_ERROR_IN = 8
 const PIN_FLOW_IN = 7
