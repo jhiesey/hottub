@@ -27,7 +27,7 @@ flowTimer: DS 1 ; counts down to zero while flow is low
 
 #define LOW_FLOW_SECS 2
 #define CHEM_PUMP_SECS 60
-#define MIN_FLOW_HZ 20
+#define MIN_FLOW_HZ 10
 
 PSECT code              ; let linker place main program
  
