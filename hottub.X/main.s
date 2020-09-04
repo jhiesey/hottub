@@ -1,40 +1,46 @@
-#include "p16F1507.inc"
+#include <xc.inc>
+#include <pic16f1507.inc>
 
- __CONFIG _CONFIG1, _FOSC_INTOSC & _WDTE_OFF & _PWRTE_ON & _MCLRE_ON & _CP_OFF & _BOREN_ON & _CLKOUTEN_OFF
- __CONFIG _CONFIG2, _WRT_OFF & _STVREN_ON & _BORV_LO & _LPBOR_OFF & _LVP_OFF
+#define skpz BTFSS STATUS, STATUS_ZERO_POSITION
+#define skpnz BTFSC STATUS, STATUS_ZERO_POSITION
+#define skpc BTFSS STATUS, STATUS_CARRY_POSITION
+#define skpnc BTFSC STATUS, STATUS_CARRY_POSITION
+
+config FOSC = INTOSC, WDTE = OFF, PWRTE = ON, MCLRE = ON, CP = OFF, BOREN = ON, CLKOUTEN = OFF
+config WRT = OFF, STVREN = ON, BORV = LO, LPBOR = OFF, LVP = OFF
 
 ;*******************************************************************************
 ; Reset Vector
 ;*******************************************************************************
 
-RES_VECT  CODE    0x0000            ; processor reset vector
-    GOTO    start                   ; go to beginning of program
+PSECT resetVector,delta=2,class=CODE	; processor reset vector
+    goto    start			; go to beginning of program
 
 ;*******************************************************************************
 ; MAIN PROGRAM
 ;*******************************************************************************
-    
-    
-GPR_VAR        UDATA_SHR
-flowBad RES 1 ; nonzero if flow low or pump not running
-pumpTimer RES 1 ; counts down to zero while pumps are on
-flowTimer RES 1 ; counts down to zero while flow is low
 
-MAIN_PROG CODE                      ; let linker place main program
+PSECT udata_shr
+flowBad: DS 1 ; nonzero if flow low or pump not running
+pumpTimer: DS 1 ; counts down to zero while pumps are on
+flowTimer: DS 1 ; counts down to zero while flow is low
 
-#define LOW_FLOW_SECS D'2'
-#define CHEM_PUMP_SECS D'60'
+#define LOW_FLOW_SECS 2
+#define CHEM_PUMP_SECS 60
+#define MIN_FLOW_HZ 20
+
+PSECT code              ; let linker place main program
  
-start
+start:
     ; internal osc at 250khz
     banksel OSCCON
-    movlw b'00110000'
+    movlw 00110000B
     movwf OSCCON
     
     banksel LATA
     clrf LATA
     banksel TRISA
-    movlw b'00110000'
+    movlw 00110000B
     movwf TRISA
     banksel ANSELA
     clrf ANSELA
@@ -44,7 +50,7 @@ start
     banksel LATB
     clrf LATB
     banksel TRISB
-    movlw b'01110000'
+    movlw 01110000B
     movwf TRISB
     banksel ANSELB
     clrf ANSELB
@@ -54,19 +60,19 @@ start
     banksel LATC
     clrf LATC
     banksel TRISC
-    movlw b'00000000'
+    movlw 00000000B
     movwf TRISC
     banksel ANSELC
     clrf ANSELC
     
     ; Timer 0 overflows once per second
     banksel OPTION_REG
-    movlw b'00000111'
+    movlw 00000111B
     movwf OPTION_REG
     
     ; Timer 1 counts flow pulses
     banksel T1CON
-    movlw b'10000000'
+    movlw 10000000B
     movwf T1CON
     
     movlw LOW_FLOW_SECS
@@ -74,7 +80,7 @@ start
     movlw CHEM_PUMP_SECS
     movwf pumpTimer
     
-mainLoop
+mainLoop:
     ; timer 1 is off. clear it
     banksel T1CON
     clrf TMR1L
@@ -88,7 +94,7 @@ mainLoop
     bcf INTCON, 2
 
     ; delay until 1 second has expired
-delay
+delay:
     btfss INTCON, 2
     goto delay
     
@@ -103,7 +109,7 @@ delay
     goto goodFlow
     
     movf TMR1L, w
-    addlw 0xeb ; 20 counts minimum
+    addlw 0xff - MIN_FLOW_HZ
     skpnc
     goto goodFlow
     
@@ -120,17 +126,17 @@ delay
     movwf flowBad
     goto checkLogic
     
-goodFlow
+goodFlow:
     banksel LATC
     bsf LATC, 1
     movlw LOW_FLOW_SECS
     movwf flowTimer
     
-flowTimerOK
+flowTimerOK:
     movlw 0
     movwf flowBad
     
-checkLogic
+checkLogic:
     ; logic:
     ; error if
     ; (flow lower than limit for more than time limit, OR circulation pump off)
@@ -155,7 +161,7 @@ checkLogic
     movwf pumpTimer
     goto mainLoop ; no pumps on; just loop again
     
-chemicalPumpOn
+chemicalPumpOn:
     decf pumpTimer
     skpnz
     goto fail
@@ -166,13 +172,13 @@ chemicalPumpOn
     skpc
     goto mainLoop
     
-fail
+fail:
     ; set fail output
     banksel LATC
     bsf LATC, 0
     bcf LATC, 1
     
-deadLoop
+deadLoop:
     goto deadLoop
 
     END
