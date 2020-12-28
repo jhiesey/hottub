@@ -25,7 +25,7 @@ const SENSOR_READING_DELAY = 40 // seconds
 const MIX_TIME = 15 * 60 // 15 minutes
 const IDLE_TIME = 30 * 60 // 30 minutes
 const POWER_ON_DELAY = 60 * 60 // 1 hour
-const MIN_LOG_MEASUREMENT_INTERVAL = 0 // 60 * 5 // 5 minutes
+const MIN_LOG_MEASUREMENT_INTERVAL = 60 * 5 // 5 minutes
 const WEB_SENSOR_CIRCULATE_TIME = 20 // seconds
 const CIRCULATION_TIMEOUT = 60 // seconds
 
@@ -216,7 +216,7 @@ const addLogEntry = async (logLevel, message, time) => {
 
 	const logLine = [time.toLocaleDateString(), time.toLocaleTimeString(), logLevel, message].join(',')
 	console.log(logLine)
-	await fsPromises.appendFile('../log.csv', logLine + '\n')
+	await fsPromises.appendFile('../event-log.csv', logLine + '\n')
 
 	if (RECENT_LOG_LEVELS.includes(logLevel)) {
 		while (recentLogEntries.length >= RECENT_LOG_COUNT) {
