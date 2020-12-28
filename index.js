@@ -1,33 +1,44 @@
 const Sensors = require('./sensors')
 const Pins = require('./pins')
+const { makeServer } = require('./server')
+const { makeStateMachine } = require('./stateMachine')
+
 const fs = require('fs')
 const subprocess = require('child_process')
+const util = require('util')
+const fsPromises = require('fs/promises')
+const nodemailer = require('nodemailer')
 
 // PINS
 const PIN_CIRCULATION_PUMP = 24
 const PIN_CHLORINE_PUMP = 9
 const PIN_ACID_PUMP = 25
-const PIN_BICARB_PUMP = 11 // Physical pump damaged
+const PIN_BICARB_PUMP = 11
 
 const PIN_ERROR_IN = 8
 const PIN_FLOW_IN = 7
 
 // BASIC TIMING
-const CIRCULATION_TIME = 3600 // seconds; 1 hour
-const READING_CIRCULATION_TIME = 30 // seconds
 const SENSOR_READING_DELAY = 40 // seconds
-const SENSOR_READING_TIME = 30 // seconds
-const CHECK_INTERVAL = 10 * 60 // seconds
-const POWER_ON_DELAY = 60 * 60 // seconds
-const POST_ADJUSTMENT_DELAY = 15 * 60 // seconds
+const MIX_TIME = 30 // 15 * 60 // 15 minutes
+const IDLE_TIME = 30 // 30 * 60 // 30 minutes
+const POWER_ON_DELAY = 30 // 60 * 60 // 1 hour
+const MIN_LOG_MEASUREMENT_INTERVAL = 60 * 5 // 5 minutes
+const WEB_SENSOR_CIRCULATE_TIME = 20 // seconds
+const CIRCULATION_TIMEOUT = 60 // seconds
 
 // SANITY PARAMETERS
 const PH_HARD_MIN = 5.8
 const PH_HARD_MAX = 9.2
 const ORP_HARD_MIN = 100
 const ORP_HARD_MAX = 900
+const MAX_NO_PROGRESS_DISPENSES = 6
+
+// GENERAL CONFIG
+const CIRCULATION_ENABLED_STATES = ['MEASURE_DELAY', 'DISPENSE', 'MIX']
 
 // ADJUSTMENT FACTORS
+const PH_MIN = 7
 const PH_MAX = 7.6
 const ACID_SECONDS_PER_UNIT = 35
 const ACID_GAIN = 0.8
@@ -35,65 +46,25 @@ const ACID_EXTRA_UNITS = 0.15
 const ACID_MAX_SECONDS = 20
 
 const ORP_MIN = 690
+const ORP_MAX = 800
 const CHLORINE_SECONDS_PER_MV = 0.6
 const ORP_GAIN = 1.8
 const CHLORINE_EXTRA_MV = 10
 const CHLORINE_MAX_SECONDS = 55
 
-// dissove 70g/l (265g/gal) sodium bicarbonate in water; roughly 10g/min
-// measure ratio of ph change to expected ph change
-// if the change in ph is more than this times the expected, add bicarb for buffering
-const MAX_DELTA_PH_RATIO = 2.6
-const PH_MIN = 7.28
-const BICARBONATE_SECONDS = 55
+// LOGS
+const RECENT_LOG_SIZE = 20
+const RECENT_MEASUREMENT_SIZE = 100
 
-var fatalError = null
+const EMAIL_LOG_LEVELS = ['RESETTABLE_ERROR', 'RESETTABLE_ERROR_RESET', 'FATAL_ERROR']
+const RECENT_LOG_LEVELS = ['MESSAGE', 'WARNING', 'RESETTABLE_ERROR', 'RESETTABLE_ERROR_RESET', 'FATAL_ERROR']
+const RECENT_READING_LOG_LEVELS = ['READING', 'MEASUREMENT']
 
+const EMAIL_PREFS = require('../emailPrefs.json')
+
+// Start of code
 const sensors = new Sensors()
-var lastReading = null
-var accurateTime = null
-var sensorsAccurate = false
-var flowGood = false
-var lastFlowGood = null
-sensors.on('reading', function (reading) {
-	lastReading = reading
-
-	pins.get(PIN_FLOW_IN, function (err, value) {
-		if (err) {
-			sensorsAccurate = false
-			flowGood = false
-			setError('failed to verify flow')
-			return
-		}
-		// ensure flow is good for SENSOR_READING_DELAY
-		var now = new Date()
-		if (value) {
-			flowGood = true
-			lastFlowGood = now
-			if (accurateTime === null) {
-				accurateTime = now.getTime() + SENSOR_READING_DELAY * 1000
-			} else {
-				if (accurateTime <= now.getTime()) {
-					sensorsAccurate = true
-				}
-			}
-		} else {
-			flowGood = false
-			accurateTime = null
-			sensorsAccurate = false
-		}
-
-		if (!sensorsAccurate)
-			return
-
-		var line = [now.toLocaleDateString(), now.toLocaleTimeString(), reading.temp, reading.ph, reading.orp].join(',') + '\n'
-		fs.appendFile('log/readings.csv', line, function (err) {
-			if (err)
-				setError('failed log reading: ' + err)
-		})
-
-	})
-})
+sensors.setMaxListeners(Infinity)
 
 var pinDefs = {}
 pinDefs[PIN_CIRCULATION_PUMP] = { in: false }
@@ -102,292 +73,424 @@ pinDefs[PIN_ACID_PUMP] = { in: false }
 pinDefs[PIN_BICARB_PUMP] = { in: false }
 pinDefs[PIN_FLOW_IN] = { in: true, edge: 'falling' }
 pinDefs[PIN_ERROR_IN] = { in: true, edge: 'rising' }
-var pins = new Pins(pinDefs)
-pins.on('ready', function () {
-	checkErrorPin()
-	circulate(POWER_ON_DELAY + SENSOR_READING_DELAY)
-	setTimeout(checkAndAdjust, POWER_ON_DELAY * 1000)
-	startServer()
-})
-var onFlowStop = null
-pins.on('edge', function (pin, value) {
-	if (value && pin === PIN_ERROR_IN) {
-		checkErrorPin()
-	} else if (!value && pin === PIN_FLOW_IN) {
-		sensorsAccurate = false
-		flowGood = false
-		accurateTime = null
-		if (onFlowStop)
-			onFlowStop()
-	}
-})
+var pins = new Pins(pinDefs, 'gpio')
+const getPin = util.promisify((pinNum, cb) => pins.get(pinNum, cb));
+const setPin = util.promisify((pinNum, value, cb) => pins.set(pinNum, value, cb));
 
-function checkErrorPin () {
-	pins.get(PIN_ERROR_IN, function (err, value) {
-		if (err) {
-			setError('failed to check for error: ' + err)
-			return
+let webSensorTimer = null
+const startStopCirculation = async () => {
+	if (webSensorTimer || CIRCULATION_ENABLED_STATES.includes(mainStateMachine.getState())) {
+		const currentState = circulationStateMachine.getState()
+		if (currentState === 'OFF') {
+			circulationStateMachine.setState('ON_NO_FLOW')
 		}
-		if (value) {
-			setError('failsafe error!')
-		}
-	})
-}
-
-function printLog (message) {
-	console.log((new Date()).toLocaleDateString() + ': ' + message)
-}
-
-function printWarning (message) {
-	console.warn((new Date()).toLocaleDateString() + ': ' + message)
-}
-
-function setError (message) {
-	console.error((new Date()).toLocaleDateString() + ': ' + message)
-	fatalError = fatalError || message
-}
-
-// For measuring the expected vs. actual ph change
-var acidStart = null
-var acidPhDeltaGoal = null
-
-var adjusting = false
-function checkAndAdjust () {
-	if (adjusting || fatalError)
-		return
-
-	adjusting = true
-	getAccurateReading(function (err, reading) {
-		var duration = 0
-		var pump
-		var delay = CHECK_INTERVAL
-		if (err) {
-			setError('failed to read: ' + err)
-		} else if (!reading) {
-			printWarning('timed out waiting for flow')
-		} else if (reading.ph < PH_HARD_MIN || reading.ph > PH_HARD_MAX || reading.orp < ORP_HARD_MIN || reading.orp > ORP_HARD_MAX) {
-			setError('reading out of range: ph=' + reading.ph + ', orp=' + reading.orp)
-			subprocess.exec('sudo reboot', function (err, stdout, stderr) {
-				printLog(err)
-			})
-		} else if (false /* reading.ph < PH_MIN /* || (acidStart !== null && (acidStart - reading.ph) > MAX_DELTA_PH_RATIO * acidPhDeltaGoal)*/) {
-			acidStart = null
-			acidPhDeltaGoal = null
-			pump = 'bicarbonate'
-			duration = BICARBONATE_SECONDS
-			delay = POST_ADJUSTMENT_DELAY
-		} else if (reading.ph > PH_MAX) {
-			pump = 'acid'
-			duration = Math.min(((reading.ph - PH_MAX) * ACID_GAIN + ACID_EXTRA_UNITS) * ACID_SECONDS_PER_UNIT, ACID_MAX_SECONDS)
-			acidStart = reading.ph
-			acidPhDeltaGoal = duration / ACID_SECONDS_PER_UNIT
-			delay = POST_ADJUSTMENT_DELAY
-		} else if (reading.orp < ORP_MIN) {
-			pump = 'chlorine'
-			duration = Math.min(((ORP_MIN - reading.orp) * ORP_GAIN + CHLORINE_EXTRA_MV) * CHLORINE_SECONDS_PER_MV, CHLORINE_MAX_SECONDS)
-			delay = POST_ADJUSTMENT_DELAY
-		}
-
-		if (duration > 0) {
-			printLog('RUNNING PUMP:', pump, 'FOR DURATION:', duration)
-			runPump(pump, duration)
-		}
-
-		adjusting = false
-		setTimeout(checkAndAdjust, delay * 1000)
-	})
-}
-
-function getAccurateReading(cb) {
-	circulate(2 * SENSOR_READING_DELAY + SENSOR_READING_TIME)
-
-	function finished (err, reading) {
-		sensors.removeListener('reading', onReading)
-		if (cb) {
-			var callback = cb
-			cb = null
-			callback(err, reading)
-		}
-	}
-
-	function onReading (reading) {
-		if (sensorsAccurate) {
-			finished(null, reading)
-		}
-	}
-	sensors.on('reading', onReading)
-	setTimeout(function () {
-		finished(null, null)
-	}, 2 * SENSOR_READING_DELAY * 1000) // give longer delay in case of intermittent flow
-}
-
-var circulationEnd = 0 // ms since epoch
-var circulationTimer = 0
-// ensures the circulation pump will run for at least duration seconds
-function circulate (duration) {
-	// if not running
-	if (circulationEnd === 0) {
-		pins.set(PIN_CIRCULATION_PUMP, true, function (err) {
-			if (err)
-				setError('failed to start pump: ' + err)
-		})
-		sensors.enable(true)
-	}
-
-	const end = Date.now() + duration * 1000
-	if (end > circulationEnd) {
-		clearTimeout(circulationTimer)
-		circulationEnd = end
-		circulationTimer = setTimeout(function () {
-			circulationEnd = 0
-			pins.set(PIN_CIRCULATION_PUMP, false, function (err) {
-				if (err)
-					setError('failed to stop pump: ' + err)
-			})
-			sensors.enable(false)
-			accurateTime = null
-			sensorsAccurate = false
-			flowGood = false
-		}, duration * 1000)
-	}
-}
-
-function runPump (pump, duration) {
-	var pumpPin
-	switch (pump) {
-		case 'chlorine':
-			pumpPin = PIN_CHLORINE_PUMP
-			break
-		case 'acid':
-			pumpPin = PIN_ACID_PUMP
-			break
-		case 'bicarbonate':
-			pumpPin = PIN_BICARB_PUMP
-			break
-		default:
-			throw new Error('invalid pump specified')
-	}
-	var now = new Date()
-	var line = [now.toLocaleDateString(), now.toLocaleTimeString(), pump, duration].join(',') + '\n'
-	fs.appendFile('log/adjustments.csv', line, function (err) {
-		if (err)
-			setError('failed to log adjustment: ' + err)
-	})
-
-	circulate(duration + CIRCULATION_TIME)
-
-	function stopPump() {
-		onFlowStop = null
-		pins.set(pumpPin, false, function (err) {
-				if (err)
-					setError('failed to stop pump: ' + err)
-		})
-	}
-
-	if (onFlowStop) {
-		setError('tried to run two chemical pumps at once!')
-		return
-	}
-	onFlowStop = function () {
-		stopPump()
-		printWarning('flow stopped during chemical pumping!')
-	}
-	if (sensorsAccurate) { // verifies circulation
-		pins.set(pumpPin, true, function (err) {
-			if (err)
-				setError('failed to start pump: ' + err)
-
-			setTimeout(stopPump, duration * 1000)
-		})
 	} else {
-		printWarning('flow stopped before chemical pumping!')
-		return
+		circulationStateMachine.setState('OFF')
 	}
 }
 
-function getStatus () {
-	if (sensorsAccurate) {
-		return 'readings accurate'
-	} else if (!flowGood) {
-		return 'no flow'
-	} else if (fatalError) {
-		return 'ERROR'
+const getWebData = async () => {
+	if (webSensorTimer) {
+		clearTimeout(webSensorTimer)
+	}
+
+	webSensorTimer = setTimeout(() => {
+		webSensorTimer = null
+		startStopCirculation()
+	}, WEB_SENSOR_CIRCULATE_TIME * 1000)
+
+	startStopCirculation()
+
+	const readings = await getReadings()
+
+	return {
+		readings,
+		mainState: mainStateMachine.getState(),
+		circulationState: circulationStateMachine.getState(),
+		flowLastGood,
+		recentLogEntries,
+		recentReadings
+	}
+}
+
+const getReadings = () => {
+	return new Promise((resolve, reject) => {
+		sensors.once('reading', (reading) => {
+			const info = getReadingsInfo(reading)
+			resolve({
+				...reading,
+				info
+			})
+		})
+
+		sensors.once('error', (error) => {
+			reject(error)
+		})
+	})
+}
+const getReadingsInfo = (reading) => {
+	const { ph, orp } = reading
+
+	let phInfo
+	if (ph < PH_HARD_MIN) {
+		phInfo = 'SUPER_LOW'
+	} else if (ph < PH_MIN) {
+		phInfo = 'LOW'
+	} else if (ph > PH_HARD_MAX) {
+		phInfo = 'SUPER_HIGH'
+	} else if (ph > PH_MAX) {
+		phInfo = 'HIGH'
 	} else {
-		return 'waiting for readings to stabilize'
+		phInfo = 'OK'
+	}
+
+	let orpInfo
+	if (orp < ORP_HARD_MIN) {
+		orpInfo = 'SUPER_LOW'
+	} else if (orp < ORP_MIN) {
+		orpInfo = 'LOW'
+	} else if (orp > ORP_HARD_MAX) {
+		orpInfo = 'SUPER_HIGH'
+	} else if (orp > ORP_MAX) {
+		orpInfo = 'HIGH'
+	} else {
+		orpInfo = 'OK'
+	}
+
+	return {
+		ph: phInfo,
+		orp: orpInfo
 	}
 }
 
-const http = require('http')
-const pug = require('pug')
-const express = require('express')
-const path = require('path')
-const bodyParser = require('body-parser')
+const mailer = nodemailer.createTransport(EMAIL_PREFS.config)
+const sendEmail = async (logLevel, message, time) => {
+	const data = await getWebData()
+	const { readings, circulationState, flowLastGood } = data
 
-var app = express()
-var httpServer = http.createServer(app)
-app.set('views', path.join(__dirname, 'views'))
-app.set('view engine', 'pug')
-app.set('x-powered-by', false)
-app.engine('pug', pug.renderFile)
+	const circulation = {
+		OFF: 'Off',
+		ON_NO_FLOW: 'No flow!',
+		ON_FLOW_GOOD: 'Good'
+	}[circulationState]
 
-app.use(express.static(path.join(__dirname, 'static')))
-app.use(bodyParser.json())
+	const text =
+`${message}
 
-app.get('/', function (req, res, next) {
-	res.render('index', {
-		title: 'Hot Tub Status',
-		temp: lastReading ? lastReading.temp : '?',
-		ph: lastReading ? lastReading.ph : '?',
-		orp: lastReading ? lastReading.orp : '?',
-		sensorStatus: getStatus(),
-		flowGood: flowGood ? 'YES' : 'NO',
-		lastFlowGood: flowGood ? 'now' : (lastFlowGood ? lastFlowGood.toLocaleDateString() : 'never'),
-		fatalError: fatalError || 'none'
+Time: ${time.toLocaleString()}
+
+Temp: ${readings.temp}
+ORP: ${readings.orp} (${readings.info.orp})
+pH: ${readings.ph} (${readings.info.ph})
+
+Circulation: ${circulation}
+Flow Last Good: ${flowLastGood.toLocaleString()}
+`
+
+	console.log(`Sent email: ${logLevel} ${text}`)
+
+	const to = Array.isArray(EMAIL_PREFS.to) ? EMAIL_PREFS.to.join(', ') : EMAIL_PREFS.to
+	await mailer.sendMail({
+		from: EMAIL_PREFS.from,
+		to,
+		subject: `HotBot ${logLevel}`,
+		text
 	})
-})
+}
 
-// returns once reading done
-app.get('/reading', function (req, res, next) {
-	circulate(READING_CIRCULATION_TIME)
 
-	// blocks until the next reading
-	sensors.once('reading', function (reading) {
-		res.setHeader('Content-Type', 'application/json')
+const recentLogEntries = []
+const addLogEntry = async (logLevel, message, time) => {
+	if (!time) {
+		time = new Date()
+	}
 
-		const fullReading = {
-			temp: reading.temp,
-			ph: reading.ph,
-			orp: reading.orp,
-			accurate: sensorsAccurate,
-			sensorStatus: getStatus(),
-			flowGood,
-			lastFlowGood: flowGood ? 'now' : (lastFlowGood ? lastFlowGood.toLocaleDateString() : 'never'),
-			fatalError: fatalError || 'none'
+	const logEntry = {
+		time,
+		logLevel,
+		message
+	}
+
+	const logLine = [time.toLocaleDateString(), time.toLocaleTimeString(), logLevel, message].join(',')
+	console.log(logLine)
+	await fsPromises.appendFile('log.csv', logLine + '\n')
+
+	if (RECENT_LOG_LEVELS.includes(logLevel)) {
+		if (recentLogEntries >= RECENT_LOG_SIZE) {
+			recentLogEntries.shift()
 		}
-		res.send(JSON.stringify(fullReading))
+		recentLogEntries.push(logEntry)
+	}
+
+	if (EMAIL_PREFS.enable && EMAIL_LOG_LEVELS.includes(logLevel)) {
+		await sendEmail(logLevel, message, time)
+	}
+}
+
+const recentReadings = []
+const logReadings = async (readings, isAdjsutmentMeasurement = false) => {
+	const time = new Date()
+
+	const lastReading = recentReadings[recentReadings.length - 1]
+	if (isAdjsutmentMeasurement || !lastReading || time.getTime() >= time.getTime() + MIN_LOG_MEASUREMENT_INTERVAL * 1000) {
+		if (recentReadings >= RECENT_MEASUREMENT_SIZE) {
+			recentReadings.shift()
+		}
+		recentReadings.push({
+			time,
+			readings
+		})
+	}
+
+	await addLogEntry('READINGS', JSON.stringify(readings), time)
+}
+
+
+sensors.on('reading', (readings) => {
+	const info = getReadingsInfo(readings)
+	logReadings({
+		...readings,
+		info
 	})
 })
 
-app.get('*', function (req, res) {
-  res.status(404).render('error', {
-    title: '404 Page Not Found - hottub.local',
-    message: '404 Not Found'
-  })
-})
+const flowState = {
+	get: async () => {
+		const value = await getPin(PIN_FLOW_IN)
+		return value
+	},
 
-// error handling middleware
-app.use(function (err, req, res, next) {
-  error(err)
-  res.status(500).render('error', {
-    title: '500 Server Error - hottub.local',
-    message: err.message || err
-  })
-})
+	onChange: (handler) => {
+		let listener = (pin, value) => {
+			if (pin === PIN_FLOW_IN) {
+				handler(value)
+			}
+		}
 
-function startServer() {
-	httpServer.listen(80)
+		const cancel = () => {
+			if (listener) {
+				pins.removeListener('edge', listener)
+				listener = null
+			}
+		}
+
+		pins.on('edge', listener)
+
+		return {
+			cancel
+		}
+	}
 }
 
-function error (err) {
-  printWarning(err.stack || err.message || err)
+let lastPump = null
+let lastPumpDuration = 0
+let noProgressCount = 0
+const mainStateMachine = makeStateMachine({
+	states: {
+		MEASURE_DELAY: {
+			onFlowGood: async ({ setTimer }, { durationSeconds }) => {
+				setTimer(durationSeconds)
+			},
+			onTimer: async ({ setState }) => {
+				const readings = await getReadings()
+				const { info } = readings
+
+				await logReadings(readings, true)
+
+				let pump = null
+				let durationSeconds = 0
+				if (info.ph === 'SUPER_HIGH' || info.ph === 'SUPER_LOW' || info.orp === 'SUPER_HIGH' || info.orp === 'SUPER_LOW') {
+					await setState('RESETTABLE_ERROR', { message: `Readings out of range: pH = ${readings.ph} ORP = ${readings.orp}`})
+					return
+				} else if (info.ph === 'HIGH') {
+					pump = 'acid'
+					durationSeconds = Math.min(((readings.ph - PH_MAX) * ACID_GAIN + ACID_EXTRA_UNITS) * ACID_SECONDS_PER_UNIT, ACID_MAX_SECONDS)
+				} else if (info.orp === 'LOW') {
+					pump = 'chlorine'
+					durationSeconds = Math.min(((ORP_MIN - readings.orp) * ORP_GAIN + CHLORINE_EXTRA_MV) * CHLORINE_SECONDS_PER_MV, CHLORINE_MAX_SECONDS)
+				}
+
+				if (pump !== null && pump === lastPump && durationSeconds >= lastPumpDuration) {
+					noProgressCount += 1
+
+					if (noProgressCount > MAX_NO_PROGRESS_DISPENSES) {
+						await setState('RESETTABLE_ERROR', { message: `Adding ${pump} is having no effect. Check the chemical level` })
+						return
+					}
+				} else {
+					noProgressCount = 0
+				}
+				lastPump = pump
+				lastPumpDuration = durationSeconds
+
+				if (durationSeconds > 0) {
+					await addLogEntry('MESSAGE', `Dispensing ${pump} for ${durationSeconds} seconds`)
+
+					await setState('DISPENSE', { pump, durationSeconds })
+				} else {
+					await setState('IDLE', { durationSeconds: IDLE_TIME })
+				}
+			}
+		},
+
+		DISPENSE: {
+			onEnter: ({}, { pump, durationSeconds }) => {
+				let dispensingPin
+
+				switch (pump) {
+					case 'chlorine':
+						dispensingPin = PIN_CHLORINE_PUMP
+						break
+					case 'acid':
+						dispensingPin = PIN_ACID_PUMP
+						break
+					case 'bicarbonate':
+						dispensingPin = PIN_BICARB_PUMP
+						break
+					default:
+						throw new Error(`Invalid pump specified: ${pump}`)
+				}
+
+				return {
+					dispensingPin,
+					durationSeconds
+				}
+			},
+			onLeave: async ({}, { dispensingPin }) => {
+				// Stop pump
+				await setPin(dispensingPin, false)
+			},
+			onFlowGood: async ({ setTimer }, { dispensingPin, durationSeconds }) => {
+				// Start pump
+				await setPin(dispensingPin, true)
+
+				// Set timer to turn off pump
+				await setTimer(durationSeconds)
+			},
+			onFlowBad: async ({ setState }) => {
+				await setState('MIX')
+				await addLogEntry('WARNING', 'Flow unexpectedly stopped during dispensing')
+			},
+			onTimer: async ({ setState }) => {
+				await setState('MIX')
+			}
+		},
+
+		MIX: {
+			onFlowGood: async ({ setTimer }) => {
+				console.log('MIX FLOW GOOD')
+				await setTimer(MIX_TIME)
+			},
+			onTimer: async ({ setState }) => {
+				await setState('MEASURE_DELAY', { durationSeconds: SENSOR_READING_DELAY })
+			}
+		},
+
+		IDLE: {
+			onEnter: async ({ setTimer }, { durationSeconds }) => {
+				await setTimer(durationSeconds)
+			},
+			onTimer: async ({setState}) => {
+				await setState('MEASURE_DELAY', { durationSeconds: SENSOR_READING_DELAY })
+			}
+		},
+
+		RESETTABLE_ERROR: {
+			onEnter: async ({}, { message }) => {
+				await addLogEntry('RESETTABLE_ERROR', message)
+			},
+			onLeave: async ({}, { message }) => {
+				await addLogEntry('RESETTABLE_ERROR_RESET', `The following error has been reset: ${message}`)
+			}
+		},
+
+		FATAL_ERROR: {
+			onEnter: async ({}, { message }) => {
+				await addLogEntry('FATAL_ERROR', message)
+			}
+		}
+	},
+	initialState: 'MEASURE_DELAY',
+	initialParams: { durationSeconds: POWER_ON_DELAY },
+	flowState,
+	onStateChange: async (stateName) => {
+		startStopCirculation()
+		await addLogEntry('MAIN_STATE', stateName)
+	}
+})
+
+let flowLastGood = 'never'
+const circulationStateMachine = makeStateMachine({
+	states: {
+		OFF: {
+			onEnter: async () => {
+				sensors.enable(false)
+				await setPin(PIN_CIRCULATION_PUMP, false)
+			}
+		},
+		ON_NO_FLOW: {
+			onEnter: async ({ setTimer }) => {
+				await setPin(PIN_CIRCULATION_PUMP, true)
+				sensors.enable(true)
+				await setTimer(CIRCULATION_TIMEOUT)
+			},
+			onFlowGood: async ({ setState }) => {
+				await setState('ON_FLOW_GOOD')
+			},
+			onTimer: async ({ setState }) => {
+				await mainStateMachine.setState('RESETTABLE_ERROR', { message: `Circulation flow was not present for ${CIRCULATION_TIMEOUT} seconds. Check the filter and make sure the pump is primed.` })
+			}
+		},
+		ON_FLOW_GOOD: {
+			onEnter: async () => {
+				flowLastGood = 'now'
+			},
+			onLeave: async () => {
+				flowLastGood = new Date()
+			},
+			onFlowBad: async ({ setTimer }) => {
+				await setState('ON_NO_FLOW')
+			}
+		}
+	},
+	initialState: 'OFF',
+	flowState,
+	onStateChange: async (stateName) => {
+		await addLogEntry('FLOW_STATE', stateName)
+	}
+})
+
+const server = makeServer({
+	port: 8080,
+	getWebData,
+	reset: async () => {
+		if (mainStateMachine.getState() === 'RESETTABLE_ERROR') {
+			await mainStateMachine.setState('MEASURE_DELAY', { durationSeconds: SENSOR_READING_DELAY })
+		}
+	}
+})
+
+const start = async () => {
+	try {
+		await addLogEntry('MESSAGE', 'bootup')
+
+		const promises = [circulationStateMachine.run(), mainStateMachine.run(), server.run()]
+
+		pins.on('edge', function (pin, value) {
+			if (value && pin === PIN_ERROR_IN) {
+				mainStateMachine.setState('FATAL_ERROR', { message: `Failsafe pin triggered during operation`})
+			}
+		})
+
+		const errorPin = await getPin(PIN_ERROR_IN)
+		if (errorPin) {
+			mainStateMachine.setState('FATAL_ERROR', { message: `Failsafe pin triggered on power up`})
+		}
+
+		await Promise.all(promises)
+	} catch (error) {
+		await addLogEntry('FATAL_ERROR', `Caught exception: ${error}`)
+	}
 }
+
+pins.on('ready', start) // This starts the program

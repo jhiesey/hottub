@@ -1,10 +1,11 @@
 const async = require('async')
 const fs = require('fs')
+const path = require('path')
 const Epoll = require('epoll').Epoll
 const EventEmitter = require('events')
 
 class Pins extends EventEmitter {
-	constructor (pinNumbers) {
+	constructor (pinNumbers, basePath = '/sys/class/gpio') {
 		super()
 		var self = this
 		self._pins = {}
@@ -15,30 +16,30 @@ class Pins extends EventEmitter {
 		async.parallel(Object.keys(pinNumbers).map(function (pinNum) {
 			const config = pinNumbers[pinNum]
 			const dirIn = !!config.in
-			const edge = config.edge || 'none'
+			const edge = config.edge ?? 'none'
 			const edgeCb = config.change
 			var pin = self._pins[pinNum] = {
 				in: dirIn
 			}
 			return function (cb) {
-				var pindir = '/sys/class/gpio/gpio' + pinNum
+				var pindir = path.join(basePath, `gpio${pinNum}`)
 				async.series([
 					function (cb) {
 						fs.access(pindir, function (err) {
 							if (err)
-								fs.writeFile('/sys/class/gpio/export', pinNum, cb)
+								fs.writeFile(path.join(basePath, 'export'), pinNum, cb)
 							else
 								cb()
 						})
 					},
 					function (cb) {
-						fs.writeFile(pindir + '/direction', dirIn ? 'in' : 'out', cb)
+						fs.writeFile(path.join(pindir, 'direction'), dirIn ? 'in' : 'out', cb)
 					},
 					function (cb) {
-						fs.writeFile(pindir + '/edge', edge, cb)
+						fs.writeFile(path.join(pindir, 'edge'), edge, cb)
 					},
 					function (cb) {
-						fs.open(pindir + '/value', 'r+', function (err, fd) {
+						fs.open(path.join(pindir, 'value'), 'r+', function (err, fd) {
 							if (err) return cb(err)
 							pin.fd = fd
 							self._fds[fd] = parseInt(pinNum)
@@ -57,7 +58,7 @@ class Pins extends EventEmitter {
 					},
 					function (cb) {
 						if (!dirIn)
-							fs.writeFile(pindir + '/value', '0', cb)
+							fs.writeFile(path.join(pindir, 'direction'), '0', cb)
 						else
 							cb()
 					}
@@ -75,6 +76,11 @@ class Pins extends EventEmitter {
 
 	_createPoller () {
 		var self = this
+
+		self._poller = {
+			add: () => {}
+		}
+
 		if (self._poller)
 			return
 
@@ -111,7 +117,7 @@ class Pins extends EventEmitter {
 		} else {
 			buf = Buffer.from('0')
 		}
-		cb = cb || function () {}
+		cb = cb ?? function () {}
 		fs.write(self._pins[pin].fd, buf, 0, 1, 0, cb)
 	}
 

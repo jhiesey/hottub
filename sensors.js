@@ -264,4 +264,33 @@ class Sensors extends EventEmitter {
 	}
 }
 
-module.exports = Sensors
+class FakeSensors extends EventEmitter {
+	constructor () {
+		super()
+
+		this.enabled = false
+		const readings = require('./fakeReadings.json')
+
+		let index = 0
+
+		setInterval(() => {
+			if (this.enabled) {
+				const reading = readings[index]
+				index = (index + 1) % readings.length
+
+				if (!reading) {
+					this.emit('error', new Error('no fake readings'))
+				} else {
+					this.emit('reading', reading)
+				}
+			}
+		}, 2000)
+	}
+
+	enable (enabled) {
+		this.enabled = enabled
+	}
+}
+
+module.exports = FakeSensors
+// module.exports = Sensors
