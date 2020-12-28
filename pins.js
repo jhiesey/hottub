@@ -58,7 +58,7 @@ class Pins extends EventEmitter {
 					},
 					function (cb) {
 						if (!dirIn)
-							fs.writeFile(path.join(pindir, 'direction'), '0', cb)
+							fs.writeFile(path.join(pindir, 'value'), '0', cb)
 						else
 							cb()
 					}

@@ -9,6 +9,8 @@ const util = require('util')
 const fsPromises = require('fs/promises')
 const nodemailer = require('nodemailer')
 
+const HTTP_PORT = 80
+
 // PINS
 const PIN_CIRCULATION_PUMP = 24
 const PIN_BLEACH_PUMP = 9
@@ -73,7 +75,7 @@ pinDefs[PIN_ACID_PUMP] = { in: false }
 pinDefs[PIN_BICARB_PUMP] = { in: false }
 pinDefs[PIN_FLOW_IN] = { in: true, edge: 'both' }
 pinDefs[PIN_ERROR_IN] = { in: true, edge: 'rising' }
-var pins = new Pins(pinDefs, 'gpio')
+var pins = new Pins(pinDefs)
 const getPin = util.promisify((pinNum, cb) => pins.get(pinNum, cb));
 const setPin = util.promisify((pinNum, value, cb) => pins.set(pinNum, value, cb));
 
@@ -475,7 +477,7 @@ const circulationStateMachine = makeStateMachine({
 })
 
 const server = makeServer({
-	port: 8080,
+	port: HTTP_PORT,
 	getWebData,
 	reset: async () => {
 		if (mainStateMachine.getState() === 'RESETTABLE_ERROR') {
