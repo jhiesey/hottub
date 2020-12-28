@@ -2,14 +2,40 @@ body {
 	font-family: sans-serif;
 }
 
-.inaccurate-reading .reading {
+.inaccurate-reading {
 	color: lightgray;
 	font-size: 150%;
 }
 
-.accurate-reading .reading {
+.ok-reading {
 	color: green;
 	font-size: 150%;
+}
+
+.low-reading {
+	color: gold;
+	font-size: 150%;
+}
+
+.high-reading {
+	color: gold;
+	font-size: 150%;
+}
+
+.super-low-reading {
+	color: red;
+	font-size: 150%;
+}
+
+.super-high-reading {
+	color: red;
+	font-size: 150%;
+}
+
+
+.log-table {
+	width:100%;
+	border-collapse: collapse;
 }
 
 .state-good {

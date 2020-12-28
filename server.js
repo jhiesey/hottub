@@ -33,16 +33,7 @@ exports.makeServer = ({ getWebData, reset, port }) => {
 	app.use(bodyParser.json())
 
 	app.get('/', function (req, res, next) {
-		res.render('index', {
-			// title: 'Hot Tub Status',
-			// temp: lastReading ? lastReading.temp : '?',
-			// ph: lastReading ? lastReading.ph : '?',
-			// orp: lastReading ? lastReading.orp : '?',
-			// sensorStatus: getStatus(),
-			// flowGood: flowGood ? 'YES' : 'NO',
-			// lastFlowGood: flowGood ? 'now' : (lastFlowGood ? lastFlowGood.toLocaleDateString() : 'never'),
-			// fatalError: fatalError || 'none'
-		})
+		res.render('index')
 	})
 
 	// returns once reading done

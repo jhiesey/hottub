@@ -264,6 +264,7 @@ class Sensors extends EventEmitter {
 	}
 }
 
+// For debugging
 class FakeSensors extends EventEmitter {
 	constructor () {
 		super()
@@ -292,5 +293,5 @@ class FakeSensors extends EventEmitter {
 	}
 }
 
-module.exports = FakeSensors
-// module.exports = Sensors
+// module.exports = FakeSensors
+module.exports = Sensors

@@ -2,35 +2,55 @@ extends layout
 
 block body
   main
-    h1 Current status:
-    div(id='readings' class='inaccurate-reading')
+    h2 Welcome to HotBot
+    h2 Current status
+    div(id='state')
       p
-        | Temp:&nbsp;
-        span(id='temp-reading' class='reading')
-          | #{temp}
+        | Main state:&nbsp;
+        span(id='main-state', class='state')
       p
-        | ORP:&nbsp;
-        span(id='orp-reading' class='reading')
-          | #{orp}
+        button(id='reset-button' class='reset-button' disabled=true) Reset Error
       p
-        | pH:&nbsp;
-        span(id='ph-reading' class='reading')
-          | #{ph}
-      p
-        | Water flowing now:&nbsp;
-        span(id='flow-good')
-          | #{flowGood}
-      p
-        | Sensor status:&nbsp;
-        span(id='sensor-status')
-          | #{sensorStatus}
+        | Circulation:&nbsp;
+        span(id='circulation-state', class='state')
       p
         | Water last flowing at:&nbsp;
-        span(id='last-flow-good')
-          | #{lastFlowGood}
+        span(id='flow-last-good')
+    h2 Readings
+    div(id='readings')
       p
-        | Serious errors:&nbsp;
-        span(id='fatal-error-field')
-          | #{fatalError}
+        | Temp:&nbsp;
+        span(id='temp-data' class='inaccurate-reading')
+          span(id='temp-reading')
+          | &nbsp;&deg;C
+      p
+        | ORP:&nbsp;
+        span(id='orp-data' class='inaccurate-reading')
+          span(id='orp-reading')
+          | &nbsp;mV&nbsp;(
+          span(id='orp-info' class='info')
+          | )
+      p
+        | pH:&nbsp;
+        span(id='ph-data' class='inaccurate-reading')
+          span(id='ph-reading')
+          | &nbsp;(
+          span(id='ph-info' class='info')
+          | )
+    div(id='history', style='width:100%;')
+      canvas(id='history-chart')
+    h2 Recent events
+    div(id='log-messages')
+      p
+        table(class='log-table', border='1')
+          thead
+            tr
+              th Time
+              th Log Level
+              th Message
+          tbody(id='log-table-body')
 
+
+  script(src='build/moment.min.js')
+  script(src='build/Chart.min.js')
   script(src='index.js')

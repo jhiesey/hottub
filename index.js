@@ -11,7 +11,7 @@ const nodemailer = require('nodemailer')
 
 // PINS
 const PIN_CIRCULATION_PUMP = 24
-const PIN_CHLORINE_PUMP = 9
+const PIN_BLEACH_PUMP = 9
 const PIN_ACID_PUMP = 25
 const PIN_BICARB_PUMP = 11
 
@@ -20,10 +20,10 @@ const PIN_FLOW_IN = 7
 
 // BASIC TIMING
 const SENSOR_READING_DELAY = 40 // seconds
-const MIX_TIME = 30 // 15 * 60 // 15 minutes
-const IDLE_TIME = 30 // 30 * 60 // 30 minutes
-const POWER_ON_DELAY = 30 // 60 * 60 // 1 hour
-const MIN_LOG_MEASUREMENT_INTERVAL = 60 * 5 // 5 minutes
+const MIX_TIME = 15 * 60 // 15 minutes
+const IDLE_TIME = 30 * 60 // 30 minutes
+const POWER_ON_DELAY = 60 * 60 // 1 hour
+const MIN_LOG_MEASUREMENT_INTERVAL = 0 // 60 * 5 // 5 minutes
 const WEB_SENSOR_CIRCULATE_TIME = 20 // seconds
 const CIRCULATION_TIMEOUT = 60 // seconds
 
@@ -47,14 +47,14 @@ const ACID_MAX_SECONDS = 20
 
 const ORP_MIN = 690
 const ORP_MAX = 800
-const CHLORINE_SECONDS_PER_MV = 0.6
+const BLEACH_SECONDS_PER_MV = 0.6
 const ORP_GAIN = 1.8
-const CHLORINE_EXTRA_MV = 10
-const CHLORINE_MAX_SECONDS = 55
+const BLEACH_EXTRA_MV = 10
+const BLEACH_MAX_SECONDS = 55
 
 // LOGS
-const RECENT_LOG_SIZE = 20
-const RECENT_MEASUREMENT_SIZE = 100
+const RECENT_LOG_COUNT = 20
+const RECENT_MEASUREMENT_COUNT = 100
 
 const EMAIL_LOG_LEVELS = ['RESETTABLE_ERROR', 'RESETTABLE_ERROR_RESET', 'FATAL_ERROR']
 const RECENT_LOG_LEVELS = ['MESSAGE', 'WARNING', 'RESETTABLE_ERROR', 'RESETTABLE_ERROR_RESET', 'FATAL_ERROR']
@@ -68,10 +68,10 @@ sensors.setMaxListeners(Infinity)
 
 var pinDefs = {}
 pinDefs[PIN_CIRCULATION_PUMP] = { in: false }
-pinDefs[PIN_CHLORINE_PUMP] = { in: false }
+pinDefs[PIN_BLEACH_PUMP] = { in: false }
 pinDefs[PIN_ACID_PUMP] = { in: false }
 pinDefs[PIN_BICARB_PUMP] = { in: false }
-pinDefs[PIN_FLOW_IN] = { in: true, edge: 'falling' }
+pinDefs[PIN_FLOW_IN] = { in: true, edge: 'both' }
 pinDefs[PIN_ERROR_IN] = { in: true, edge: 'rising' }
 var pins = new Pins(pinDefs, 'gpio')
 const getPin = util.promisify((pinNum, cb) => pins.get(pinNum, cb));
@@ -106,6 +106,7 @@ const getWebData = async () => {
 	return {
 		readings,
 		mainState: mainStateMachine.getState(),
+		mainSubState: mainStateMachine.getSubState(),
 		circulationState: circulationStateMachine.getState(),
 		flowLastGood,
 		recentLogEntries,
@@ -169,9 +170,9 @@ const sendEmail = async (logLevel, message, time) => {
 	const { readings, circulationState, flowLastGood } = data
 
 	const circulation = {
-		OFF: 'Off',
-		ON_NO_FLOW: 'No flow!',
-		ON_FLOW_GOOD: 'Good'
+		OFF: 'Pump off',
+		ON_NO_FLOW: 'Pump on but no flow!',
+		ON_FLOW_GOOD: 'Water flowing'
 	}[circulationState]
 
 	const text =
@@ -213,10 +214,10 @@ const addLogEntry = async (logLevel, message, time) => {
 
 	const logLine = [time.toLocaleDateString(), time.toLocaleTimeString(), logLevel, message].join(',')
 	console.log(logLine)
-	await fsPromises.appendFile('log.csv', logLine + '\n')
+	await fsPromises.appendFile('../log.csv', logLine + '\n')
 
 	if (RECENT_LOG_LEVELS.includes(logLevel)) {
-		if (recentLogEntries >= RECENT_LOG_SIZE) {
+		while (recentLogEntries.length >= RECENT_LOG_COUNT) {
 			recentLogEntries.shift()
 		}
 		recentLogEntries.push(logEntry)
@@ -233,7 +234,7 @@ const logReadings = async (readings, isAdjsutmentMeasurement = false) => {
 
 	const lastReading = recentReadings[recentReadings.length - 1]
 	if (isAdjsutmentMeasurement || !lastReading || time.getTime() >= time.getTime() + MIN_LOG_MEASUREMENT_INTERVAL * 1000) {
-		if (recentReadings >= RECENT_MEASUREMENT_SIZE) {
+		while (recentReadings.length >= RECENT_MEASUREMENT_COUNT) {
 			recentReadings.shift()
 		}
 		recentReadings.push({
@@ -300,21 +301,33 @@ const mainStateMachine = makeStateMachine({
 				let pump = null
 				let durationSeconds = 0
 				if (info.ph === 'SUPER_HIGH' || info.ph === 'SUPER_LOW' || info.orp === 'SUPER_HIGH' || info.orp === 'SUPER_LOW') {
-					await setState('RESETTABLE_ERROR', { message: `Readings out of range: pH = ${readings.ph} ORP = ${readings.orp}`})
+					let message = `Readings out of range:`;
+					if (info.orp === 'SUPER_HIGH' || info.orp === 'SUPER_LOW') {
+						message += ` ORP = ${readings.orp} mV`
+					}
+					if (info.ph === 'SUPER_HIGH' || info.ph === 'SUPER_LOW') {
+						message += ` pH = ${readings.ph}`
+					}
+
+					await setState('RESETTABLE_ERROR', { message })
 					return
 				} else if (info.ph === 'HIGH') {
 					pump = 'acid'
 					durationSeconds = Math.min(((readings.ph - PH_MAX) * ACID_GAIN + ACID_EXTRA_UNITS) * ACID_SECONDS_PER_UNIT, ACID_MAX_SECONDS)
 				} else if (info.orp === 'LOW') {
-					pump = 'chlorine'
-					durationSeconds = Math.min(((ORP_MIN - readings.orp) * ORP_GAIN + CHLORINE_EXTRA_MV) * CHLORINE_SECONDS_PER_MV, CHLORINE_MAX_SECONDS)
+					pump = 'bleach'
+					durationSeconds = Math.min(((ORP_MIN - readings.orp) * ORP_GAIN + BLEACH_EXTRA_MV) * BLEACH_SECONDS_PER_MV, BLEACH_MAX_SECONDS)
 				}
+
+				// Round to nearest 0.1 second for logging cleanliness
+				durationSeconds = Math.round(durationSeconds * 10) / 10
 
 				if (pump !== null && pump === lastPump && durationSeconds >= lastPumpDuration) {
 					noProgressCount += 1
 
 					if (noProgressCount > MAX_NO_PROGRESS_DISPENSES) {
-						await setState('RESETTABLE_ERROR', { message: `Adding ${pump} is having no effect. Check the chemical level` })
+						noProgressCount = 0
+						await setState('RESETTABLE_ERROR', { message: `Adding ${pump} is having no effect. Check the chemical level.` })
 						return
 					}
 				} else {
@@ -338,8 +351,8 @@ const mainStateMachine = makeStateMachine({
 				let dispensingPin
 
 				switch (pump) {
-					case 'chlorine':
-						dispensingPin = PIN_CHLORINE_PUMP
+					case 'bleach':
+						dispensingPin = PIN_BLEACH_PUMP
 						break
 					case 'acid':
 						dispensingPin = PIN_ACID_PUMP
@@ -352,6 +365,7 @@ const mainStateMachine = makeStateMachine({
 				}
 
 				return {
+					pump,
 					dispensingPin,
 					durationSeconds
 				}
@@ -472,11 +486,11 @@ const server = makeServer({
 
 const start = async () => {
 	try {
-		await addLogEntry('MESSAGE', 'bootup')
+		await addLogEntry('MESSAGE', 'Bootup')
 
 		const promises = [circulationStateMachine.run(), mainStateMachine.run(), server.run()]
 
-		pins.on('edge', function (pin, value) {
+		pins.on('edge', (pin, value) => {
 			if (value && pin === PIN_ERROR_IN) {
 				mainStateMachine.setState('FATAL_ERROR', { message: `Failsafe pin triggered during operation`})
 			}

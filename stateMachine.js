@@ -208,6 +208,7 @@ exports.makeStateMachine = ({ states, initialState, initialParams, onStateChange
 		},
 		setState,
 		getState: () => currentStateName,
+		getSubState: () => subState,
 		exit: exitStateMachine
 	}
 }

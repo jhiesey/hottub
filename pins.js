@@ -77,9 +77,10 @@ class Pins extends EventEmitter {
 	_createPoller () {
 		var self = this
 
-		self._poller = {
-			add: () => {}
-		}
+		// To disable for non-linux testing
+		// self._poller = {
+		// 	add: () => {}
+		// }
 
 		if (self._poller)
 			return
