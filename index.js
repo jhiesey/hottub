@@ -235,7 +235,7 @@ const logReadings = async (readings, isAdjsutmentMeasurement = false) => {
 	const time = new Date()
 
 	const lastReading = recentReadings[recentReadings.length - 1]
-	if (isAdjsutmentMeasurement || !lastReading || time.getTime() >= time.getTime() + MIN_LOG_MEASUREMENT_INTERVAL * 1000) {
+	if (isAdjsutmentMeasurement || !lastReading || time.getTime() >= lastReading.time.getTime() + MIN_LOG_MEASUREMENT_INTERVAL * 1000) {
 		while (recentReadings.length >= RECENT_MEASUREMENT_COUNT) {
 			recentReadings.shift()
 		}
