@@ -1,20 +1,3 @@
-/*
-UI:
-* state
-* readings
-* flow
-* state timer
-
-* errors
-* reset button
-
-* log:
-	* warnings
-	* errors/resets
-	* dispense
-
-*/
-
 const http = require('http')
 const pug = require('pug')
 const express = require('express')
@@ -36,8 +19,8 @@ exports.makeServer = ({ getWebData, reset, port }) => {
 		res.render('index')
 	})
 
-	// returns once reading done
 	app.get('/data', (req, res, next) => {
+		// returns once reading done
 		getWebData().then((data) => {
 			res.setHeader('Content-Type', 'application/json')
 			res.send(JSON.stringify(data))
