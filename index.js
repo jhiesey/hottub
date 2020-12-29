@@ -190,7 +190,7 @@ const getReadingsInfo = (reading) => {
 	}
 }
 
-const mailer = nodemailer.createTransport(EMAIL_PREFS.config)
+const mailer = EMAIL_PREFS.enable ? nodemailer.createTransport(EMAIL_PREFS.config) : null
 const sendEmail = async (logLevel, message, time) => {
 	const data = await getWebData()
 	const { readings, circulationState, flowLastGood } = data
