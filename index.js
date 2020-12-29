@@ -25,36 +25,43 @@ const SENSOR_READING_DELAY = 40 // seconds
 const MIX_TIME = 15 * 60 // 15 minutes
 const IDLE_TIME = 30 * 60 // 30 minutes
 const POWER_ON_DELAY = 60 * 60 // 1 hour
-const MIN_LOG_MEASUREMENT_INTERVAL = 60 * 5 // 5 minutes
 const WEB_SENSOR_CIRCULATE_TIME = 20 // seconds
 const CIRCULATION_TIMEOUT = 60 // seconds
 
 // SANITY PARAMETERS
-const PH_HARD_MIN = 5.8
-const PH_HARD_MAX = 9.2
-const ORP_HARD_MIN = 100
-const ORP_HARD_MAX = 900
 const MAX_NO_PROGRESS_DISPENSES = 6
 
 // GENERAL CONFIG
 const CIRCULATION_ENABLED_STATES = ['MEASURE_DELAY', 'DISPENSE', 'MIX']
 
-// ADJUSTMENT FACTORS
+// LIMITS
+const PH_HARD_MIN = 5.8
+const PH_TOO_LOW = 6.5
 const PH_MIN = 7
 const PH_MAX = 7.6
+const PH_TOO_HIGH = 8.0
+const PH_HARD_MAX = 9.2
+
+const ORP_HARD_MIN = 100
+const ORP_TOO_LOW = 600
+const ORP_MIN = 690
+const ORP_MAX = 780
+const ORP_TOO_HIGH = 800
+const ORP_HARD_MAX = 900
+
+// ADJUSTMENT FACTORS
 const ACID_SECONDS_PER_UNIT = 35
 const ACID_GAIN = 0.8
 const ACID_EXTRA_UNITS = 0.15
 const ACID_MAX_SECONDS = 20
 
-const ORP_MIN = 690
-const ORP_MAX = 800
 const BLEACH_SECONDS_PER_MV = 0.6
 const ORP_GAIN = 1.8
 const BLEACH_EXTRA_MV = 10
 const BLEACH_MAX_SECONDS = 55
 
 // LOGS
+const MIN_LOG_MEASUREMENT_INTERVAL = 5 * 60 // 5 minutes
 const RECENT_LOG_COUNT = 20
 const RECENT_MEASUREMENT_COUNT = 100
 
@@ -131,31 +138,48 @@ const getReadings = () => {
 		})
 	})
 }
+const readingInfoDescriptions = {
+	OK: 'OK',
+	VERY_LOW: 'very low!',
+	TOO_LOW: 'too low',
+	SLIGHTLY_LOW: 'slightly low',
+	VERY_HIGH: 'very high!',
+	TOO_HIGH: 'too high',
+	SLIGHTLY_HIGH: 'slightly high'
+}
 const getReadingsInfo = (reading) => {
 	const { ph, orp } = reading
 
 	let phInfo
 	if (ph < PH_HARD_MIN) {
-		phInfo = 'SUPER_LOW'
+		phInfo = 'VERY_LOW'
+	} else if (ph < PH_TOO_LOW) {
+		phInfo = 'TOO_LOW'
 	} else if (ph < PH_MIN) {
-		phInfo = 'LOW'
+		phInfo = 'SLIGHTLY_LOW'
 	} else if (ph > PH_HARD_MAX) {
-		phInfo = 'SUPER_HIGH'
+		phInfo = 'VERY_HIGH'
+	} else if (ph > PH_TOO_HIGH) {
+		phInfo = 'TOO_HIGH'
 	} else if (ph > PH_MAX) {
-		phInfo = 'HIGH'
+		phInfo = 'SLIGHTLY_HIGH'
 	} else {
 		phInfo = 'OK'
 	}
 
 	let orpInfo
 	if (orp < ORP_HARD_MIN) {
-		orpInfo = 'SUPER_LOW'
+		orpInfo = 'VERY_LOW'
+	} else if (orp < ORP_TOO_LOW) {
+		orpInfo = 'TOO_LOW'
 	} else if (orp < ORP_MIN) {
-		orpInfo = 'LOW'
+		orpInfo = 'SLIGHTLY_LOW'
 	} else if (orp > ORP_HARD_MAX) {
-		orpInfo = 'SUPER_HIGH'
+		orpInfo = 'VERY_HIGH'
+	} else if (orp > ORP_TOO_HIGH) {
+		orpInfo = 'TOO_HIGH'
 	} else if (orp > ORP_MAX) {
-		orpInfo = 'HIGH'
+		orpInfo = 'SLIGHTLY_HIGH'
 	} else {
 		orpInfo = 'OK'
 	}
@@ -183,8 +207,8 @@ const sendEmail = async (logLevel, message, time) => {
 Time: ${time.toLocaleString()}
 
 Temp: ${readings.temp}
-ORP: ${readings.orp} (${readings.info.orp})
-pH: ${readings.ph} (${readings.info.ph})
+ORP: ${readings.orp} (${readingInfoDescriptions[readings.info.orp]})
+pH: ${readings.ph} (${readingInfoDescriptions[readings.info.ph]})
 
 Circulation: ${circulation}
 Flow Last Good: ${flowLastGood.toLocaleString()}
@@ -247,8 +271,6 @@ const logReadings = async (readings, isAdjsutmentMeasurement = false) => {
 
 	await addLogEntry('READINGS', JSON.stringify(readings), time)
 }
-
-
 sensors.on('reading', (readings) => {
 	const info = getReadingsInfo(readings)
 	logReadings({
@@ -292,7 +314,7 @@ const mainStateMachine = makeStateMachine({
 	states: {
 		MEASURE_DELAY: {
 			onFlowGood: async ({ setTimer }, { durationSeconds }) => {
-				setTimer(durationSeconds)
+				await setTimer(durationSeconds)
 			},
 			onTimer: async ({ setState }) => {
 				const readings = await getReadings()
@@ -302,21 +324,21 @@ const mainStateMachine = makeStateMachine({
 
 				let pump = null
 				let durationSeconds = 0
-				if (info.ph === 'SUPER_HIGH' || info.ph === 'SUPER_LOW' || info.orp === 'SUPER_HIGH' || info.orp === 'SUPER_LOW') {
+				if (info.ph === 'VERY_HIGH' || info.ph === 'VERY_LOW' || info.orp === 'VERY_HIGH' || info.orp === 'VERY_LOW') {
 					let message = `Readings out of range:`;
-					if (info.orp === 'SUPER_HIGH' || info.orp === 'SUPER_LOW') {
+					if (info.orp === 'VERY_HIGH' || info.orp === 'VERY_LOW') {
 						message += ` ORP = ${readings.orp} mV`
 					}
-					if (info.ph === 'SUPER_HIGH' || info.ph === 'SUPER_LOW') {
+					if (info.ph === 'VERY_HIGH' || info.ph === 'VERY_LOW') {
 						message += ` pH = ${readings.ph}`
 					}
 
 					await setState('RESETTABLE_ERROR', { message })
 					return
-				} else if (info.ph === 'HIGH') {
+				} else if (readings.ph > PH_MAX) {
 					pump = 'acid'
 					durationSeconds = Math.min(((readings.ph - PH_MAX) * ACID_GAIN + ACID_EXTRA_UNITS) * ACID_SECONDS_PER_UNIT, ACID_MAX_SECONDS)
-				} else if (info.orp === 'LOW') {
+				} else if (readings.orp < ORP_MIN) {
 					pump = 'bleach'
 					durationSeconds = Math.min(((ORP_MIN - readings.orp) * ORP_GAIN + BLEACH_EXTRA_MV) * BLEACH_SECONDS_PER_MV, BLEACH_MAX_SECONDS)
 				}

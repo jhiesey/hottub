@@ -126,20 +126,72 @@ const circulationStates = {
 	}
 }
 
-const readingClassNames = {
-	OK: 'ok-reading',
-	LOW: 'low-reading',
-	HIGH: 'high-reading',
-	SUPER_LOW: 'super-low-reading',
-	SUPER_HIGH: 'super-high-reading'
+const readingInfoDisplay = {
+	OK: {
+		description: 'OK',
+		className: 'ok-reading'
+	},
+	VERY_LOW: {
+		description: 'very low!',
+		className: 'very-low-reading'
+	},
+	TOO_LOW: {
+		description: 'too low',
+		className: 'too-low-reading'
+	},
+	SLIGHTLY_LOW: {
+		description: 'slightly low',
+		className: 'slightly-low-reading'
+	},
+	VERY_HIGH: {
+		description: 'very high!',
+		className: 'very-high-reading'
+	},
+	TOO_HIGH: {
+		description: 'too high',
+		className: 'too-high-reading'
+	},
+	SLIGHTLY_HIGH: {
+		description: 'slightly high',
+		className: 'slightly-high-reading'
+	}
 }
+
+const getReadingInfoDisplay = (circulationState, info) => {
+	console.log('INFO', info)
+	const displayData = readingInfoDisplay[info]
+
+	const description = displayData?.description ?? 'unknown'
+	const className = circulationState === 'ON_FLOW_GOOD' && displayData ? displayData.className : 'inaccurate-reading'
+
+	return {
+		description,
+		className
+	}
+}
+
 
 const getReadingClassName = (circulationState, info) => {
 	if (circulationState !== 'ON_FLOW_GOOD') {
 		return 'inaccurate-reading'
 	}
 
-	return readingClassNames[info] ?? ''
+	switch (info) {
+		case 0:
+			return 'ok-reading'
+		case -1:
+			return 'low-reading'
+		case -2:
+			return 'too-low-reading'
+		case -3:
+			return 'very-low-reading'
+		case 1:
+			return 'high-reading'
+		case 2:
+			return 'too-high-reading'
+		case 3:
+			return 'very-high-reading'
+	}
 }
 
 let loadTimer = null
@@ -176,16 +228,19 @@ const load = async () => {
 
 	flowLastGoodLabel.innerHTML = flowLastGood
 
-	tempData.className = getReadingClassName(circulationState, 'OK')
+	const tempInfoDisplay = getReadingInfoDisplay(circulationState, 'OK')
+	tempData.className = tempInfoDisplay.className
 	tempReading.innerHTML = readings.temp
 
-	orpData.className = getReadingClassName(circulationState, readings.info.orp)
+	const orpInfoDisplay = getReadingInfoDisplay(circulationState, readings.info.orp)
+	orpData.className = orpInfoDisplay.className
 	orpReading.innerHTML = readings.orp
-	orpInfo.innerHTML = readings.info.orp.replace('_', ' ')
+	orpInfo.innerHTML = orpInfoDisplay.description
 
-	phData.className = getReadingClassName(circulationState, readings.info.ph)
+	const phInfoDisplay = getReadingInfoDisplay(circulationState, readings.info.ph)
+	phData.className = phInfoDisplay.className
 	phReading.innerHTML = readings.ph
-	phInfo.innerHTML = readings.info.ph.replace('_', ' ')
+	phInfo.innerHTML = phInfoDisplay.description
 
 	logTableBody.innerHTML = recentLogEntries.map(({ time, logLevel, message }) => {
 		return `<tr><td>${new Date(time).toLocaleString()}</td><td>${logLevel}</td><td>${message}</td></tr>`

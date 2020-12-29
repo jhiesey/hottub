@@ -12,29 +12,38 @@ body {
 	font-size: 150%;
 }
 
-.low-reading {
+.slightly-low-reading {
+	color: yellowgreen;
+	font-size: 150%;
+}
+
+.too-low-reading {
 	color: gold;
 	font-size: 150%;
 }
 
-.high-reading {
+.very-low-reading {
+	color: red;
+	font-size: 150%;
+}
+
+.slightly-high-reading {
+	color: yellowgreen;
+	font-size: 150%;
+}
+
+.too-high-reading {
 	color: gold;
 	font-size: 150%;
 }
 
-.super-low-reading {
+.very-high-reading {
 	color: red;
 	font-size: 150%;
 }
-
-.super-high-reading {
-	color: red;
-	font-size: 150%;
-}
-
 
 .log-table {
-	width:100%;
+	width: 100%;
 	border-collapse: collapse;
 }
 
