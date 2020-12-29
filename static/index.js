@@ -156,7 +156,6 @@ const readingInfoDisplay = {
 		className: 'slightly-high-reading'
 	}
 }
-
 const getReadingInfoDisplay = (circulationState, info) => {
 	const displayData = readingInfoDisplay[info]
 
@@ -169,28 +168,11 @@ const getReadingInfoDisplay = (circulationState, info) => {
 	}
 }
 
-
-const getReadingClassName = (circulationState, info) => {
-	if (circulationState !== 'ON_FLOW_GOOD') {
-		return 'inaccurate-reading'
-	}
-
-	switch (info) {
-		case 0:
-			return 'ok-reading'
-		case -1:
-			return 'low-reading'
-		case -2:
-			return 'too-low-reading'
-		case -3:
-			return 'very-low-reading'
-		case 1:
-			return 'high-reading'
-		case 2:
-			return 'too-high-reading'
-		case 3:
-			return 'very-high-reading'
-	}
+const logClassNameForLevel = {
+	WARNING: 'log-level-warning',
+	RESETTABLE_ERROR: 'log-level-resettable-error',
+	RESETTABLE_ERROR_RESET: 'log-level-resettable-error-reset',
+	FATAL_ERROR: 'log-level-fatal-error'
 }
 
 let loadTimer = null
@@ -242,9 +224,10 @@ const load = async () => {
 	phInfo.innerHTML = phInfoDisplay.description
 
 	logTableBody.innerHTML = recentLogEntries.map(({ time, logLevel, message }) => {
-		return `<tr><td>${new Date(time).toLocaleString()}</td><td>${logLevel}</td><td>${message}</td></tr>`
-	}).join('')
+		const logClassName = logClassNameForLevel[logLevel] ?? ''
 
+		return `<tr class="${logClassName}"><td>${new Date(time).toLocaleString()}</td><td>${logLevel}</td><td>${message}</td></tr>`
+	}).join('')
 
 	const newDatasets = { orp: [], ph: [] }
 	for (const { readings, time } of recentReadings) {

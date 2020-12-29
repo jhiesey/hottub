@@ -47,6 +47,22 @@ body {
 	border-collapse: collapse;
 }
 
+.log-level-warning {
+	background-color: yellow;
+}
+
+.log-level-resettable-error {
+	background-color: orange;
+}
+
+.log-level-resettable-error-reset {
+	background-color: lightgreen;
+}
+
+.log-level-fatal-error {
+	background-color: red;
+}
+
 .state-good {
 	color: green;
 }
