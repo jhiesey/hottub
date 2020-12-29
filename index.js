@@ -37,7 +37,7 @@ const CIRCULATION_ENABLED_STATES = ['MEASURE_DELAY', 'DISPENSE', 'MIX']
 // LIMITS
 const PH_HARD_MIN = 5.8
 const PH_TOO_LOW = 6.5
-const PH_MIN = 7
+const PH_MIN = 6.8
 const PH_MAX = 7.6
 const PH_TOO_HIGH = 8.0
 const PH_HARD_MAX = 9.2
