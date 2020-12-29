@@ -114,14 +114,14 @@ const mainStates = {
 
 const circulationStates = {
 	OFF: {
-		description: 'Pump off'
+		description: 'pump off'
 	},
 	ON_NO_FLOW: {
-		description: 'Pump on but no flow!',
+		description: 'pump on but no flow!',
 		className: 'state-bad'
 	},
 	ON_FLOW_GOOD: {
-		description: 'Water flowing',
+		description: 'water flowing',
 		className: 'state-good'
 	}
 }
@@ -158,7 +158,6 @@ const readingInfoDisplay = {
 }
 
 const getReadingInfoDisplay = (circulationState, info) => {
-	console.log('INFO', info)
 	const displayData = readingInfoDisplay[info]
 
 	const description = displayData?.description ?? 'unknown'
