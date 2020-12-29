@@ -22,8 +22,8 @@ const path = require('path')
 const bodyParser = require('body-parser')
 
 exports.makeServer = ({ getWebData, reset, port }) => {
-	var app = express()
-	var httpServer = http.createServer(app)
+	const app = express()
+	const httpServer = http.createServer(app)
 	app.set('views', path.join(__dirname, 'views'))
 	app.set('view engine', 'pug')
 	app.set('x-powered-by', false)

@@ -75,14 +75,14 @@ const EMAIL_PREFS = require('../emailPrefs.json')
 const sensors = new Sensors()
 sensors.setMaxListeners(Infinity)
 
-var pinDefs = {}
+const pinDefs = {}
 pinDefs[PIN_CIRCULATION_PUMP] = { in: false }
 pinDefs[PIN_BLEACH_PUMP] = { in: false }
 pinDefs[PIN_ACID_PUMP] = { in: false }
 pinDefs[PIN_BICARB_PUMP] = { in: false }
 pinDefs[PIN_FLOW_IN] = { in: true, edge: 'both' }
 pinDefs[PIN_ERROR_IN] = { in: true, edge: 'rising' }
-var pins = new Pins(pinDefs)
+const pins = new Pins(pinDefs)
 const getPin = util.promisify((pinNum, cb) => pins.get(pinNum, cb));
 const setPin = util.promisify((pinNum, value, cb) => pins.set(pinNum, value, cb));
 
@@ -428,7 +428,7 @@ const mainStateMachine = makeStateMachine({
 			onEnter: async ({ setTimer }, { durationSeconds }) => {
 				await setTimer(durationSeconds)
 			},
-			onTimer: async ({setState}) => {
+			onTimer: async ({ setState }) => {
 				await setState('MEASURE_DELAY', { durationSeconds: SENSOR_READING_DELAY })
 			}
 		},
@@ -486,7 +486,7 @@ const circulationStateMachine = makeStateMachine({
 			onLeave: async () => {
 				flowLastGood = new Date()
 			},
-			onFlowBad: async ({ setTimer }) => {
+			onFlowBad: async ({ setState }) => {
 				await setState('ON_NO_FLOW')
 			}
 		}
