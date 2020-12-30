@@ -61,13 +61,16 @@ const BLEACH_EXTRA_MV = 10
 const BLEACH_MAX_SECONDS = 55
 
 // LOGS
+// An extra second so that readingsAccurate goes true after the adustment
+// mesasurement gets logged
+const LOG_ACCURATE_DELAY = SENSOR_READING_DELAY + 1
+
 const MIN_LOG_MEASUREMENT_INTERVAL = 5 * 60 // 5 minutes
 const RECENT_LOG_COUNT = 20
 const RECENT_MEASUREMENT_COUNT = 100
 
 const EMAIL_LOG_LEVELS = ['RESETTABLE_ERROR', 'RESETTABLE_ERROR_RESET', 'FATAL_ERROR']
 const RECENT_LOG_LEVELS = ['MESSAGE', 'WARNING', 'RESETTABLE_ERROR', 'RESETTABLE_ERROR_RESET', 'FATAL_ERROR']
-const RECENT_READING_LOG_LEVELS = ['READING', 'MEASUREMENT']
 
 const EMAIL_PREFS = require('../emailPrefs.json')
 
@@ -272,6 +275,10 @@ const logReadings = async (readings, isAdjsutmentMeasurement = false) => {
 	await addLogEntry('READINGS', JSON.stringify(readings), time)
 }
 sensors.on('reading', (readings) => {
+	if (!logReadingsAccurate) {
+		return
+	}
+
 	const info = getReadingsInfo(readings)
 	logReadings({
 		...readings,
@@ -457,6 +464,7 @@ const mainStateMachine = makeStateMachine({
 	}
 })
 
+let logReadingsAccurate = false
 let flowLastGood = 'never'
 const circulationStateMachine = makeStateMachine({
 	states: {
@@ -480,14 +488,19 @@ const circulationStateMachine = makeStateMachine({
 			}
 		},
 		ON_FLOW_GOOD: {
-			onEnter: async () => {
+			onEnter: async ({ setTimer }) => {
 				flowLastGood = 'now'
+				await setTimer(LOG_ACCURATE_DELAY)
 			},
 			onLeave: async () => {
+				logReadingsAccurate = false
 				flowLastGood = new Date()
 			},
 			onFlowBad: async ({ setState }) => {
 				await setState('ON_NO_FLOW')
+			},
+			onTimer: () => async () => {
+				logReadingsAccurate = true
 			}
 		}
 	},
