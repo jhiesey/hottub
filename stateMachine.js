@@ -176,7 +176,6 @@ exports.makeStateMachine = ({ states, initialState, initialParams, onStateChange
 	}
 
 	for (const [name, state] of Object.entries(states)) {
-
 		for (const method of ['onFlowGood', 'onFlowBad', 'onTimer']) {
 			const stateMethod = state[method]
 

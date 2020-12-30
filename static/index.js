@@ -198,30 +198,30 @@ const load = async () => {
 	} = body
 
 	const mainStateInfo = mainStates[mainState]?.(mainSubState)
-	mainStateLabel.innerHTML = mainStateInfo?.description ?? 'unknown'
+	mainStateLabel.textContent = mainStateInfo?.description ?? 'unknown'
 	mainStateLabel.className = mainStateInfo?.className ?? ''
 
 	resetButton.disabled = mainState !== 'RESETTABLE_ERROR'
 
 	const circulationStateInfo = circulationStates[circulationState]
-	circulationStateLabel.innerHTML = circulationStateInfo?.description ?? 'unknown'
+	circulationStateLabel.textContent = circulationStateInfo?.description ?? 'unknown'
 	circulationStateLabel.className = circulationStateInfo?.className ?? ''
 
-	flowLastGoodLabel.innerHTML = flowLastGood
+	flowLastGoodLabel.textContent = flowLastGood
 
 	const tempInfoDisplay = getReadingInfoDisplay(circulationState, 'OK')
 	tempData.className = tempInfoDisplay.className
-	tempReading.innerHTML = readings.temp
+	tempReading.textContent = readings.temp
 
 	const orpInfoDisplay = getReadingInfoDisplay(circulationState, readings.info.orp)
 	orpData.className = orpInfoDisplay.className
-	orpReading.innerHTML = readings.orp
-	orpInfo.innerHTML = orpInfoDisplay.description
+	orpReading.textContent = readings.orp
+	orpInfo.textContent = orpInfoDisplay.description
 
 	const phInfoDisplay = getReadingInfoDisplay(circulationState, readings.info.ph)
 	phData.className = phInfoDisplay.className
-	phReading.innerHTML = readings.ph
-	phInfo.innerHTML = phInfoDisplay.description
+	phReading.textContent = readings.ph
+	phInfo.textContent = phInfoDisplay.description
 
 	logTableBody.innerHTML = recentLogEntries.map(({ time, logLevel, message }) => {
 		const logClassName = logClassNameForLevel[logLevel] ?? ''
