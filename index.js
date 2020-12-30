@@ -499,7 +499,7 @@ const circulationStateMachine = makeStateMachine({
 			onFlowBad: async ({ setState }) => {
 				await setState('ON_NO_FLOW')
 			},
-			onTimer: () => async () => {
+			onTimer: async () => {
 				logReadingsAccurate = true
 			}
 		}
