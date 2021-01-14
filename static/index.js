@@ -121,7 +121,11 @@ const circulationStates = {
 		className: 'state-bad'
 	},
 	ON_FLOW_GOOD: {
-		description: 'water flowing',
+		description: 'water flowing; waiting for sensor delay',
+		className: 'state-good'
+	},
+	ON_READINGS_VALID: {
+		description: 'water flowing and readings accurate',
 		className: 'state-good'
 	}
 }
@@ -160,7 +164,7 @@ const getReadingInfoDisplay = (circulationState, info) => {
 	const displayData = readingInfoDisplay[info]
 
 	const description = displayData?.description ?? 'unknown'
-	const className = circulationState === 'ON_FLOW_GOOD' && displayData ? displayData.className : 'inaccurate-reading'
+	const className = circulationState === 'ON_READINGS_VALID' && displayData ? displayData.className : 'inaccurate-reading'
 
 	return {
 		description,

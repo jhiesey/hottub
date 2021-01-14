@@ -54,7 +54,7 @@ exports.makeStateMachine = ({ states, initialState, initialParams, onStateChange
 
 		const onLeave = stateMap[currentStateName]?.onLeave
 		if (onLeave) {
-			await onLeave(userFunctions, subState)
+			await onLeave(userFunctions, subState, name)
 		}
 
 		if (currentStateName !== expectedStateName) {
@@ -65,6 +65,8 @@ exports.makeStateMachine = ({ states, initialState, initialParams, onStateChange
 			throw new Error(`Invalid setState call from state ${currentStateName} to ${name}`)
 		}
 
+		const previousStateName = currentStateName
+
 		currentStateName = name
 		expectedStateName = name
 		subState = params // Default unless onEnter returns something different
@@ -72,7 +74,7 @@ exports.makeStateMachine = ({ states, initialState, initialParams, onStateChange
 		onFlowBadTriggered = false
 
 		if (onStateChange) {
-			await onStateChange(currentStateName)
+			await onStateChange(currentStateName, previousStateName)
 		}
 
 		if (currentStateName !== expectedStateName) {
@@ -81,7 +83,7 @@ exports.makeStateMachine = ({ states, initialState, initialParams, onStateChange
 
 		const onEnter = stateMap[currentStateName].onEnter
 		if (onEnter) {
-			const newSubState = await onEnter(userFunctions, params)
+			const newSubState = await onEnter(userFunctions, params, previousStateName)
 
 			if (currentStateName !== expectedStateName) {
 				return

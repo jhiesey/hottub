@@ -275,7 +275,8 @@ const logReadings = async (readings, isAdjsutmentMeasurement = false) => {
 	await addLogEntry('READINGS', JSON.stringify(readings), time)
 }
 sensors.on('reading', (readings) => {
-	if (!logReadingsAccurate) {
+	const circulationState = circulationStateMachine.getState()
+	if (circulationState !== 'ON_READINGS_ACCURATE') {
 		return
 	}
 
@@ -464,7 +465,6 @@ const mainStateMachine = makeStateMachine({
 	}
 })
 
-let logReadingsAccurate = false
 let flowLastGood = 'never'
 const circulationStateMachine = makeStateMachine({
 	states: {
@@ -492,15 +492,24 @@ const circulationStateMachine = makeStateMachine({
 				flowLastGood = 'now'
 				await setTimer(LOG_ACCURATE_DELAY)
 			},
-			onLeave: async () => {
-				logReadingsAccurate = false
-				flowLastGood = new Date()
+			onLeave: async ({}, {}, nextState) => {
+				if (nextState !== 'ON_READINGS_ACCURATE') {
+					flowLastGood = new Date()
+				}
 			},
 			onFlowBad: async ({ setState }) => {
 				await setState('ON_NO_FLOW')
 			},
-			onTimer: async () => {
-				logReadingsAccurate = true
+			onTimer: async ({ setState }) => {
+				await setState('ON_READINGS_ACCURATE')
+			}
+		},
+		ON_READINGS_ACCURATE: {
+			onLeave: async () => {
+				flowLastGood = new Date()
+			},
+			onFlowBad: async({ setState }) => {
+				await setState('ON_NO_FLOW')
 			}
 		}
 	},
