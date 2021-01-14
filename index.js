@@ -492,7 +492,7 @@ const circulationStateMachine = makeStateMachine({
 				flowLastGood = 'now'
 				await setTimer(LOG_ACCURATE_DELAY)
 			},
-			onLeave: async ({}, {}, nextState) => {
+			onLeave: async ({}, subState, nextState) => {
 				if (nextState !== 'ON_READINGS_ACCURATE') {
 					flowLastGood = new Date()
 				}
