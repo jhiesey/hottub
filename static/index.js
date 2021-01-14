@@ -124,7 +124,7 @@ const circulationStates = {
 		description: 'water flowing; waiting for sensor delay',
 		className: 'state-good'
 	},
-	ON_READINGS_VALID: {
+	ON_READINGS_ACCURATE: {
 		description: 'water flowing and readings accurate',
 		className: 'state-good'
 	}
