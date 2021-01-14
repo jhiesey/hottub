@@ -164,7 +164,7 @@ const getReadingInfoDisplay = (circulationState, info) => {
 	const displayData = readingInfoDisplay[info]
 
 	const description = displayData?.description ?? 'unknown'
-	const className = circulationState === 'ON_READINGS_VALID' && displayData ? displayData.className : 'inaccurate-reading'
+	const className = circulationState === 'ON_READINGS_ACCURATE' && displayData ? displayData.className : 'inaccurate-reading'
 
 	return {
 		description,
