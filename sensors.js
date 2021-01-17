@@ -54,7 +54,7 @@ class Sensors extends EventEmitter {
 		function flowEdge () {
 			self._flowCount++
 		}
-		self._pins.on('change', flowEdge)
+		self._pins.on('edge', flowEdge)
 
 		self._uart = new SerialPort('/dev/ttyAMA0', {
 			baudRate: 9600,
