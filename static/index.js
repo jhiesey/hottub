@@ -10,6 +10,9 @@ const orpInfo = document.getElementById('orp-info')
 const phData = document.getElementById('ph-data')
 const phReading = document.getElementById('ph-reading')
 const phInfo = document.getElementById('ph-info')
+const flowData = document.getElementById('flow-data')
+const flowReading = document.getElementById('flow-reading')
+const flowInfo = document.getElementById('flow-info')
 
 const historyChartCanvas = document.getElementById('history-chart')
 
@@ -226,6 +229,11 @@ const load = async () => {
 	phData.className = phInfoDisplay.className
 	phReading.textContent = readings.ph
 	phInfo.textContent = phInfoDisplay.description
+
+	const flowInfoDisplay = getReadingInfoDisplay(circulationState, readings.info.flow)
+	flowData.className = flowInfoDisplay.className
+	flowReading.textContent = readings.flow
+	flowInfo.textContent = flowInfoDisplay.description
 
 	logTableBody.innerHTML = recentLogEntries.map(({ time, logLevel, message }) => {
 		const logClassName = logClassNameForLevel[logLevel] ?? ''

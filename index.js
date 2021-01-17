@@ -49,6 +49,9 @@ const ORP_MAX = 780
 const ORP_TOO_HIGH = 800
 const ORP_HARD_MAX = 900
 
+const FLOW_HARD_MIN = 10
+const FLOW_TOO_LOW = 15
+
 // ADJUSTMENT FACTORS
 const ACID_SECONDS_PER_UNIT = 35
 const ACID_GAIN = 0.8
@@ -151,7 +154,7 @@ const readingInfoDescriptions = {
 	SLIGHTLY_HIGH: 'slightly high'
 }
 const getReadingsInfo = (reading) => {
-	const { ph, orp } = reading
+	const { ph, orp, flow } = reading
 
 	let phInfo
 	if (ph < PH_HARD_MIN) {
@@ -187,9 +190,19 @@ const getReadingsInfo = (reading) => {
 		orpInfo = 'OK'
 	}
 
+	let flowInfo
+	if (flow < FLOW_HARD_MIN) {
+		flowInfo = 'VERY_LOW'
+	} else if (flow < FLOW_TOO_LOW) {
+		flowInfo = 'TOO_LOW'
+	} else {
+		flowInfo = 'OK'
+	}
+
 	return {
 		ph: phInfo,
-		orp: orpInfo
+		orp: orpInfo,
+		flow: flowInfo
 	}
 }
 
