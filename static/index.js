@@ -269,8 +269,8 @@ resetButton.onclick = async () => {
 	})
 
 	if (result.ok) {
-		await load()
-		alert('Reset successful')
+		//await load()
+		//alert('Reset successful')
 	} else {
 		alert('Reset failed')
 	}
