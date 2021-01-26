@@ -497,7 +497,10 @@ const circulationStateMachine = makeStateMachine({
 				await setState('ON_FLOW_GOOD')
 			},
 			onTimer: async ({ setState }) => {
-				await mainStateMachine.setState('RESETTABLE_ERROR', { message: `Circulation flow was not present for ${CIRCULATION_TIMEOUT} seconds. Check the filter and make sure the pump is primed.` })
+				await mainStateMachine.setState('RESETTABLE_ERROR', {
+					message: `Circulation flow was not present for ${CIRCULATION_TIMEOUT} seconds. Check the filter and make sure the pump is primed.`,
+					isFlowError: true
+				})
 			}
 		},
 		ON_FLOW_GOOD: {
@@ -518,6 +521,12 @@ const circulationStateMachine = makeStateMachine({
 			}
 		},
 		ON_READINGS_ACCURATE: {
+			onEnter: async () => {
+				// Auto-reset flow errors
+				if (mainStateMachine.getState() === 'RESETTABLE_ERROR' && mainStateMachine.getSubState().isFlowError) {
+					await mainStateMachine.setState('MEASURE_DELAY', { durationSeconds: SENSOR_READING_DELAY })
+				}
+			},
 			onLeave: async () => {
 				flowLastGood = new Date()
 			},
