@@ -21,7 +21,7 @@ const PIN_ERROR_IN = 8
 const PIN_FLOW_IN = 7
 
 // BASIC TIMING
-const SENSOR_READING_DELAY = 40 // seconds
+const SENSOR_READING_DELAY = 2 * 60 // 2 minutes
 const MIX_TIME = 15 * 60 // 15 minutes
 const IDLE_TIME = 30 * 60 // 30 minutes
 const POWER_ON_DELAY = 60 * 60 // 1 hour
