@@ -19,6 +19,7 @@ const historyChartCanvas = document.getElementById('history-chart')
 const logTableBody = document.getElementById('log-table-body')
 
 const resetButton = document.getElementById('reset-button')
+const pauseButton = document.getElementById('pause-button')
 
 const ORP_COLOR = 'rgb(54, 162, 235)'
 const PH_COLOR = 'rgb(255, 99, 132)'
@@ -201,7 +202,8 @@ const load = async () => {
 		circulationState,
 		flowLastGood,
 		recentLogEntries,
-		recentReadings
+		recentReadings,
+		isPaused
 	} = body
 
 	const mainStateInfo = mainStates[mainState]?.(mainSubState)
@@ -209,6 +211,7 @@ const load = async () => {
 	mainStateLabel.className = mainStateInfo?.className ?? ''
 
 	resetButton.disabled = mainState !== 'RESETTABLE_ERROR'
+	pauseButton.checked = mainState === 'PAUSED'
 
 	const circulationStateInfo = circulationStates[circulationState]
 	circulationStateLabel.textContent = circulationStateInfo?.description ?? 'unknown'
@@ -274,6 +277,12 @@ resetButton.onclick = async () => {
 	} else {
 		alert('Reset failed')
 	}
+}
+
+pauseButton.onclick = async () => {
+	await fetch(`/setPaused?pause=${pauseButton.checked}`, {
+		method: 'POST'
+	})
 }
 
 load()

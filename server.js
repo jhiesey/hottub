@@ -4,7 +4,7 @@ const express = require('express')
 const path = require('path')
 const bodyParser = require('body-parser')
 
-exports.makeServer = ({ getWebData, reset, port }) => {
+exports.makeServer = ({ getWebData, reset, setPaused, port }) => {
 	const app = express()
 	const httpServer = http.createServer(app)
 	app.set('views', path.join(__dirname, 'views'))
@@ -34,6 +34,17 @@ exports.makeServer = ({ getWebData, reset, port }) => {
 
 	app.post('/reset', (req, res, next) => {
 		reset().then(() => {
+			res.status(200).send('ok')
+		}, (error) => {
+			res.status(500).render('error', {
+				title: '500 Server Error - hottub.local',
+				message: error.message ?? error
+			})
+		})
+	})
+
+	app.post('/setPaused', (req, res, next) => {
+		setPaused(req.params.pause === 'true').then(() => {
 			res.status(200).send('ok')
 		}, (error) => {
 			res.status(500).render('error', {

@@ -27,6 +27,7 @@ const IDLE_TIME = 30 * 60 // 30 minutes
 const POWER_ON_DELAY = 60 * 60 // 1 hour
 const WEB_SENSOR_CIRCULATE_TIME = 20 // seconds
 const CIRCULATION_TIMEOUT = 60 // seconds
+const PAUSE_DURATION = 3 * 60 * 60 // 3 hours
 
 // SANITY PARAMETERS
 const MAX_NO_PROGRESS_DISPENSES = 6
@@ -73,7 +74,7 @@ const RECENT_LOG_COUNT = 20
 const RECENT_MEASUREMENT_COUNT = 100
 
 const EMAIL_LOG_LEVELS = ['RESETTABLE_ERROR', 'FATAL_ERROR']
-const RECENT_LOG_LEVELS = ['MESSAGE', 'WARNING', 'RESETTABLE_ERROR', 'RESETTABLE_ERROR_RESET', 'FATAL_ERROR']
+const RECENT_LOG_LEVELS = ['MESSAGE', 'WARNING', 'RESETTABLE_ERROR', 'RESETTABLE_ERROR_RESET', 'FATAL_ERROR', 'PAUSE']
 
 const EMAIL_PREFS = require('../emailPrefs.json')
 
@@ -333,6 +334,19 @@ let lastPumpDuration = 0
 let noProgressCount = 0
 const mainStateMachine = makeStateMachine({
 	states: {
+		PAUSED: {
+			onEnter: async ({ setTimer }) => {
+				await addLogEntry('PAUSE', `Pausing chemical dispensing; will auto resume at: ${(new Date(Date.now() + PAUSE_DURATION)).toLocaleTimeString()}`)
+				await setTimer(PAUSE_DURATION)
+			},
+			onLeave: async () => {
+				await addLogEntry('PAUSE', 'Resuming chemical dispensing')
+			},
+			onTimer: async ({ setState }) => {
+				await setState('MEASURE_DELAY', { durationSeconds: SENSOR_READING_DELAY })
+			}
+		},
+
 		MEASURE_DELAY: {
 			onFlowGood: async ({ setTimer }, { durationSeconds }) => {
 				await setTimer(durationSeconds)
@@ -547,6 +561,18 @@ const server = makeServer({
 	getWebData,
 	reset: async () => {
 		if (mainStateMachine.getState() === 'RESETTABLE_ERROR') {
+			await mainStateMachine.setState('MEASURE_DELAY', { durationSeconds: SENSOR_READING_DELAY })
+		}
+	},
+	setPaused: async (pause) => {
+		const currentState = mainStateMachine.getState()
+		if (currentState === 'RESETTABLE_ERROR' || currentState === 'FATAL_ERROR') {
+			throw new Error('Must reset first')
+		}
+
+		if (pause) {
+			await mainStateMachine.setState('PAUSED')
+		} else {
 			await mainStateMachine.setState('MEASURE_DELAY', { durationSeconds: SENSOR_READING_DELAY })
 		}
 	}
