@@ -94,7 +94,10 @@ const historyChart = new Chart(historyChartCanvas, {
 })
 
 const mainStates = {
-	MEASURE_DELAY: ({}) => ({
+	PAUSED: () => ({
+		description: 'Paused'
+	}),
+	MEASURE_DELAY: () => ({
 		description: 'Preparing to check water conditions'
 	}),
 	DISPENSE: ({ pump, durationSeconds }) => ({

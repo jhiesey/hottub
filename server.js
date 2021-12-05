@@ -44,7 +44,7 @@ exports.makeServer = ({ getWebData, reset, setPaused, port }) => {
 	})
 
 	app.post('/setPaused', (req, res, next) => {
-		setPaused(req.params.pause === 'true').then(() => {
+		setPaused(req.query.pause === 'true').then(() => {
 			res.status(200).send('ok')
 		}, (error) => {
 			res.status(500).render('error', {

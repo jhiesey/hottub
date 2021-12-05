@@ -74,7 +74,7 @@ const RECENT_LOG_COUNT = 20
 const RECENT_MEASUREMENT_COUNT = 100
 
 const EMAIL_LOG_LEVELS = ['RESETTABLE_ERROR', 'FATAL_ERROR']
-const RECENT_LOG_LEVELS = ['MESSAGE', 'WARNING', 'RESETTABLE_ERROR', 'RESETTABLE_ERROR_RESET', 'FATAL_ERROR', 'PAUSE']
+const RECENT_LOG_LEVELS = ['MESSAGE', 'WARNING', 'RESETTABLE_ERROR', 'RESETTABLE_ERROR_RESET', 'FATAL_ERROR']
 
 const EMAIL_PREFS = require('../emailPrefs.json')
 
@@ -336,11 +336,11 @@ const mainStateMachine = makeStateMachine({
 	states: {
 		PAUSED: {
 			onEnter: async ({ setTimer }) => {
-				await addLogEntry('PAUSE', `Pausing chemical dispensing; will auto resume at: ${(new Date(Date.now() + PAUSE_DURATION)).toLocaleTimeString()}`)
+				await addLogEntry('MESSAGE', `Pausing chemical dispensing; will auto resume at ${(new Date(Date.now() + PAUSE_DURATION * 1000)).toLocaleTimeString()}`)
 				await setTimer(PAUSE_DURATION)
 			},
 			onLeave: async () => {
-				await addLogEntry('PAUSE', 'Resuming chemical dispensing')
+				await addLogEntry('MESSAGE', 'Resuming chemical dispensing')
 			},
 			onTimer: async ({ setState }) => {
 				await setState('MEASURE_DELAY', { durationSeconds: SENSOR_READING_DELAY })
