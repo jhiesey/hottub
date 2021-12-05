@@ -205,8 +205,7 @@ const load = async () => {
 		circulationState,
 		flowLastGood,
 		recentLogEntries,
-		recentReadings,
-		isPaused
+		recentReadings
 	} = body
 
 	const mainStateInfo = mainStates[mainState]?.(mainSubState)
