@@ -65,7 +65,6 @@ exports.makeServer = ({ getWebData, reset, setPaused, port }) => {
 	app.use(function (err, req, res, next) {
 		console.error(err.stack ?? err.message ?? err)
 
-		error(err)
 		res.status(500).render('error', {
 			title: '500 Server Error - hottub.local',
 			message: err.message ?? err
