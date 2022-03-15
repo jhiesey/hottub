@@ -158,7 +158,7 @@ const readingInfoDescriptions = {
 	SLIGHTLY_HIGH: 'slightly high'
 }
 const getReadingsInfo = (reading) => {
-	const { ph, orp, flow } = reading
+	const { ph, orp, flow, temp } = reading
 
 	let phInfo
 	if (ph < PH_HARD_MIN) {
