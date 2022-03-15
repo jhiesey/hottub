@@ -310,6 +310,17 @@ sensors.on('reading', (readings) => {
 		...readings,
 		info
 	})
+
+	if (info.temp === 'TOO_HIGH') {
+		(async () => {
+			await mainStateMachine.setState('RESETTABLE_ERROR', { message: 'Too hot, shutting off!!!' })
+
+			// Shut off heater
+			await fetch('http://10.0.0.95/sf/4.5')
+		})().catch(err => {
+			console.error(`Failed to turn off heat: ${err}`)
+		})
+	}
 })
 
 const flowState = {
@@ -367,16 +378,6 @@ const mainStateMachine = makeStateMachine({
 				const { info } = readings
 
 				await logReadings(readings, true)
-
-				if (info.temp === 'TOO_HIGH') {
-					await setState('RESETTABLE_ERROR', { message: 'Too hot, shutting off!!!' })
-
-					// Shut off heater
-					fetch('http://10.0.0.95/sf/4.5').catch(err => {
-						console.error(`Failed to turn off heat: ${err}`)
-					})
-					return
-				}
 
 				let pump = null
 				let durationSeconds = 0
