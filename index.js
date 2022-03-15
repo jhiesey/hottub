@@ -312,14 +312,13 @@ sensors.on('reading', (readings) => {
 	})
 
 	if (info.temp === 'TOO_HIGH') {
-		(async () => {
-			await mainStateMachine.setState('RESETTABLE_ERROR', { message: 'Too hot, shutting off!!!' })
+		mainStateMachine.setState('RESETTABLE_ERROR', { message: 'Too hot, shutting off!!!' })
+			.catch(err => {
+				console.error(`Failed send too hot notification: ${err}`)
+			})
 
-			// Shut off heater
-			await fetch('http://10.0.0.95/sf/4.5')
-		})().catch(err => {
-			console.error(`Failed to turn off heat: ${err}`)
-		})
+		// Shut off heater
+		fetch('http://10.0.0.95/sf/4.5').catch(() => {})
 	}
 })
 

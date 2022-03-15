@@ -222,7 +222,7 @@ const load = async () => {
 
 	flowLastGoodLabel.textContent = flowLastGood
 
-	const tempInfoDisplay = getReadingInfoDisplay(circulationState, 'OK')
+	const tempInfoDisplay = getReadingInfoDisplay(circulationState, readings.info.temp)
 	tempData.className = tempInfoDisplay.className
 	tempReading.textContent = readings.temp
 	tempInfo.textContent = tempInfoDisplay.description
