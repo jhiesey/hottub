@@ -2,7 +2,6 @@ const Sensors = require('./sensors')
 const Pins = require('./pins')
 const { makeServer } = require('./server')
 const { makeStateMachine } = require('./stateMachine')
-const { turnHeatOff } = require('./heater-api')
 
 const fetch = require('node-fetch')
 const fs = require('fs')
