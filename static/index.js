@@ -4,6 +4,7 @@ const flowLastGoodLabel = document.getElementById('flow-last-good')
 
 const tempData = document.getElementById('temp-data')
 const tempReading = document.getElementById('temp-reading')
+const tempInfo = document.getElementById('temp-info')
 const orpData = document.getElementById('orp-data')
 const orpReading = document.getElementById('orp-reading')
 const orpInfo = document.getElementById('orp-info')
@@ -224,6 +225,7 @@ const load = async () => {
 	const tempInfoDisplay = getReadingInfoDisplay(circulationState, 'OK')
 	tempData.className = tempInfoDisplay.className
 	tempReading.textContent = readings.temp
+	tempInfo.textContent = tempInfoDisplay.description
 
 	const orpInfoDisplay = getReadingInfoDisplay(circulationState, readings.info.orp)
 	orpData.className = orpInfoDisplay.className

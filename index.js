@@ -2,7 +2,9 @@ const Sensors = require('./sensors')
 const Pins = require('./pins')
 const { makeServer } = require('./server')
 const { makeStateMachine } = require('./stateMachine')
+const { turnHeatOff } = require('./heater-api')
 
+const fetch = require('node-fetch')
 const fs = require('fs')
 const subprocess = require('child_process')
 const util = require('util')
@@ -52,6 +54,8 @@ const ORP_HARD_MAX = 900
 
 const FLOW_HARD_MIN = 10
 const FLOW_TOO_LOW = 15
+
+const TEMP_TOO_HIGH = 45
 
 // ADJUSTMENT FACTORS
 const ACID_SECONDS_PER_UNIT = 35
@@ -200,10 +204,18 @@ const getReadingsInfo = (reading) => {
 		flowInfo = 'OK'
 	}
 
+	let tempInfo
+	if (temp > TEMP_TOO_HIGH) {
+		tempInfo = 'TOO_HIGH'
+	} else {
+		tempInfo = 'OK'
+	}
+
 	return {
 		ph: phInfo,
 		orp: orpInfo,
-		flow: flowInfo
+		flow: flowInfo,
+		temp: tempInfo
 	}
 }
 
@@ -223,7 +235,7 @@ const sendEmail = async (logLevel, message, time) => {
 
 Time: ${time.toLocaleString()}
 
-Temp: ${readings.temp}
+Temp: ${readings.temp} (${readingInfoDescriptions[readings.info.temp]})
 ORP: ${readings.orp} (${readingInfoDescriptions[readings.info.orp]})
 pH: ${readings.ph} (${readingInfoDescriptions[readings.info.ph]})
 
@@ -356,6 +368,16 @@ const mainStateMachine = makeStateMachine({
 				const { info } = readings
 
 				await logReadings(readings, true)
+
+				if (info.temp === 'TOO_HIGH') {
+					await setState('RESETTABLE_ERROR', { message: 'Too hot, shutting off!!!' })
+
+					// Shut off heater
+					fetch('http://10.0.0.95/sf/4.5').catch(err => {
+						console.error(`Failed to turn off heat: ${err}`)
+					})
+					return
+				}
 
 				let pump = null
 				let durationSeconds = 0
