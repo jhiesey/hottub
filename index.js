@@ -332,6 +332,7 @@ const flowState = {
 	onChange: (handler) => {
 		let listener = (pin, value) => {
 			if (pin === PIN_FLOW_IN) {
+				await addLogEntry('MESSAGE', `flowState is now ${value}`)
 				handler(value)
 			}
 		}
@@ -537,6 +538,8 @@ const circulationStateMachine = makeStateMachine({
 					message: `Circulation flow was not present for ${CIRCULATION_TIMEOUT} seconds. Check the filter and make sure the pump is primed.`,
 					isFlowError: true
 				})
+				const readings = await getReadings()
+				await logReadings(readings, true)
 			}
 		},
 		ON_FLOW_GOOD: {
