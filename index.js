@@ -237,6 +237,7 @@ Time: ${time.toLocaleString()}
 Temp: ${readings.temp} (${readingInfoDescriptions[readings.info.temp]})
 ORP: ${readings.orp} (${readingInfoDescriptions[readings.info.orp]})
 pH: ${readings.ph} (${readingInfoDescriptions[readings.info.ph]})
+Flow: ${readings.flow} (${readingInfoDescriptions[readings.info.flow]})
 
 Circulation: ${circulation}
 Flow Last Good: ${flowLastGood.toLocaleString()}
