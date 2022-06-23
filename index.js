@@ -315,7 +315,7 @@ sensors.on('reading', (readings) => {
 	if (info.temp === 'TOO_HIGH') {
 		mainStateMachine.setState('RESETTABLE_ERROR', { message: 'Too hot, shutting off!!!' })
 			.catch(err => {
-				console.error(`Failed send too hot notification: ${err}`)
+				console.log(`Failed send too hot notification: ${err}`)
 			})
 
 		// Shut off heater
@@ -332,7 +332,9 @@ const flowState = {
 	onChange: (handler) => {
 		let listener = (pin, value) => {
 			if (pin === PIN_FLOW_IN) {
-				await addLogEntry('MESSAGE', `flowState is now ${value}`)
+				addLogEntry('MESSAGE', `flowState is now ${value}`).catch((err) => {
+					console.log(`Failed to log flowState: ${err}`)
+				})
 				handler(value)
 			}
 		}
