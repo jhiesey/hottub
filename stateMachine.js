@@ -112,6 +112,9 @@ exports.makeStateMachine = ({ states, initialState, initialParams, onStateChange
 			return
 		}
 
+		if (!stateMap[currentStateName]) {
+			console.log(`BAD STATE 1: ${currentStateName}`)
+		}
 		if (!hasFlow && stateMap[currentStateName].onFlowBad && !onFlowBadTriggered) {
 			onFlowBadTriggered = true
 
@@ -121,12 +124,19 @@ exports.makeStateMachine = ({ states, initialState, initialParams, onStateChange
 
 	flowChangeHandler = flowState.onChange((hasFlow) => {
 		const handleChange = async () => {
+			if (!started) {
+				return
+			}
+
 			if (hasFlow && stateMap[currentStateName].onFlowGood && !onFlowGoodTriggered) {
 				onFlowGoodTriggered = true
 
 				await stateMap[currentStateName].onFlowGood(userFunctions, subState)
 			}
 
+			if (!stateMap[currentStateName]) {
+				console.log(`BAD STATE 2: ${currentStateName}`)
+			}
 			if (!hasFlow && stateMap[currentStateName].onFlowBad && !onFlowBadTriggered) {
 				onFlowBadTriggered = true
 
